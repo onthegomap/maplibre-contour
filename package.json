@@ -12,5 +12,8 @@
   },
   "author": "Michael Barry",
   "license": "BSD-3-Clause",
-  "homepage": "https://github.com/onthegomap/maplibre-contour"
+  "homepage": "https://github.com/onthegomap/maplibre-contour",
+  "dependencies": {
+    "vt-pbf": "3.1.3"
+  }
 }
