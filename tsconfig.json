@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "moduleResolution": "node",
+    "allowJs": true,
+    "paths": {},
+    "types": ["jest", "node"],
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "module": "ESNext",
+    "esModuleInterop": true
+  },
+  "ts-node": {
+    "experimentalSpecifierResolution": "node",
+    "esm": true
+  },
+  "include": ["src/*.ts"],
+  "exclude": ["node_modules"]
+}

@@ -1,0 +1,175 @@
+import Pbf from "pbf";
+
+export const enum GeomType {
+  UNKNOWN = 0,
+  POINT = 1,
+  LINESTRING = 2,
+  POLYGON = 3,
+}
+
+export type PropertyValue = string | boolean | number;
+
+export interface Feature {
+  type: GeomType;
+  properties: { [key: string]: PropertyValue };
+  geometry: number[][];
+}
+
+export interface Layer {
+  features: Feature[];
+  extent?: number;
+}
+
+export interface Tile {
+  extent?: number;
+  layers: { [id: string]: Layer };
+}
+
+interface Context {
+  keys: string[];
+  values: PropertyValue[];
+  keycache: { [any: string]: number };
+  valuecache: { [any: string]: number };
+  feature?: Feature;
+}
+
+export default function encodeVectorTile(tile: Tile): Uint8Array {
+  const pbf = new Pbf();
+  for (const id in tile.layers) {
+    const layer = tile.layers[id];
+    if (!layer.extent) {
+      layer.extent = tile.extent;
+    }
+    pbf.writeMessage(3, writeLayer, { ...layer, id });
+  }
+  return pbf.finish();
+}
+
+function writeLayer(layer: Layer & { id: string }, pbf?: Pbf) {
+  if (!pbf) throw new Error("pbf undefined");
+  pbf.writeVarintField(15, 2);
+  pbf.writeStringField(1, layer.id || "");
+  pbf.writeVarintField(5, layer.extent || 4096);
+
+  const context: Context = {
+    keys: [],
+    values: [],
+    keycache: {},
+    valuecache: {},
+  };
+
+  for (const feature of layer.features) {
+    context.feature = feature;
+    pbf.writeMessage(2, writeFeature, context);
+  }
+
+  for (const key of context.keys) {
+    pbf.writeStringField(3, key);
+  }
+
+  for (const value of context.values) {
+    pbf.writeMessage(4, writeValue, value);
+  }
+}
+
+function writeFeature(context: Context, pbf?: Pbf) {
+  const feature = context.feature;
+  if (!feature || !pbf) throw new Error();
+
+  pbf.writeMessage(2, writeProperties, context);
+  pbf.writeVarintField(3, feature.type);
+  pbf.writeMessage(4, writeGeometry, feature);
+}
+
+function writeProperties(context: Context, pbf?: Pbf) {
+  const feature = context.feature;
+  if (!feature || !pbf) throw new Error();
+  const keys = context.keys;
+  const values = context.values;
+  const keycache = context.keycache;
+  const valuecache = context.valuecache;
+
+  for (const key in feature.properties) {
+    let value = feature.properties[key];
+
+    let keyIndex = keycache[key];
+    if (value === null) continue; // don't encode null value properties
+
+    if (typeof keyIndex === "undefined") {
+      keys.push(key);
+      keyIndex = keys.length - 1;
+      keycache[key] = keyIndex;
+    }
+    pbf.writeVarint(keyIndex);
+
+    const type = typeof value;
+    if (type !== "string" && type !== "boolean" && type !== "number") {
+      value = JSON.stringify(value);
+    }
+    const valueKey = `${type}:${value}`;
+    let valueIndex = valuecache[valueKey];
+    if (typeof valueIndex === "undefined") {
+      values.push(value);
+      valueIndex = values.length - 1;
+      valuecache[valueKey] = valueIndex;
+    }
+    pbf.writeVarint(valueIndex);
+  }
+}
+
+function command(cmd: number, length: number) {
+  return (length << 3) + (cmd & 0x7);
+}
+
+function zigzag(num: number) {
+  return (num << 1) ^ (num >> 31);
+}
+
+function writeGeometry(feature: Feature, pbf?: Pbf) {
+  if (!pbf) throw new Error();
+  const geometry = feature.geometry;
+  const type = feature.type;
+  let x = 0;
+  let y = 0;
+  for (const ring of geometry) {
+    let count = 1;
+    if (type === GeomType.POINT) {
+      count = ring.length / 2;
+    }
+    pbf.writeVarint(command(1, count)); // moveto
+    // do not write polygon closing path as lineto
+    const length = ring.length / 2;
+    const lineCount = type === GeomType.POLYGON ? length - 1 : length;
+    for (let i = 0; i < lineCount; i++) {
+      if (i === 1 && type !== 1) {
+        pbf.writeVarint(command(2, lineCount - 1)); // lineto
+      }
+      const dx = ring[i * 2] - x;
+      const dy = ring[i * 2 + 1] - y;
+      pbf.writeVarint(zigzag(dx));
+      pbf.writeVarint(zigzag(dy));
+      x += dx;
+      y += dy;
+    }
+    if (type === GeomType.POLYGON) {
+      pbf.writeVarint(command(7, 1)); // closepath
+    }
+  }
+}
+
+function writeValue(value: PropertyValue, pbf?: Pbf) {
+  if (!pbf) throw new Error();
+  if (typeof value === "string") {
+    pbf.writeStringField(1, value);
+  } else if (typeof value === "boolean") {
+    pbf.writeBooleanField(7, value);
+  } else if (typeof value === "number") {
+    if (value % 1 !== 0) {
+      pbf.writeDoubleField(3, value);
+    } else if (value < 0) {
+      pbf.writeSVarintField(6, value);
+    } else {
+      pbf.writeVarintField(5, value);
+    }
+  }
+}
