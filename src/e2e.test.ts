@@ -1,6 +1,6 @@
 import { flattenDeep } from "lodash";
 import Actor from "./actor";
-import { WorkerDispatch } from "./worker";
+import WorkerDispatch from "./worker-dispatch";
 import { DemSource } from "./protocol";
 import { MainThreadDispatch } from "./remote-dem-manager";
 import { CancelablePromise, DemTile, Timing } from "./types";

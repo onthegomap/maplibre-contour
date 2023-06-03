@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>Display a map</title>
@@ -32,6 +32,7 @@
       var demSource = new mlcontour.DemSource({
         url: "https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png",
         encoding: "terrarium",
+        maxzoom: 13,
       });
 
       // calls maplibregl.addProtocol for the shared cache and contour protocols
@@ -39,8 +40,9 @@
 
       var map = new maplibregl.Map({
         container: "map",
-        zoom: 13,
-        center: [-112.14253, 36.06978],
+        zoom: 12.55,
+        center: [86.92731, 27.97797],
+        hash: true,
         style: {
           version: 8,
           glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
@@ -49,7 +51,7 @@
               type: "raster-dem",
               encoding: "terrarium",
               tiles: [demSource.sharedDemProtocolUrl], // share cached DEM tiles with contour layer
-              maxzoom: 14,
+              maxzoom: 13,
               tileSize: 256,
             },
             contours: {
@@ -62,9 +64,8 @@
                     // zoom: [minor, major]
                     11: [200, 1000],
                     12: [100, 500],
-                    13: [50, 200],
-                    14: [20, 100],
-                    15: [10, 50],
+                    14: [50, 200],
+                    15: [20, 100],
                   },
                   elevationKey: "ele",
                   levelKey: "level",
@@ -79,6 +80,9 @@
               id: "hills",
               type: "hillshade",
               source: "dem",
+              paint: {
+                "hillshade-exaggeration": 0.25,
+              },
             },
             {
               id: "contours",

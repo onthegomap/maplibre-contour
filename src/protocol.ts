@@ -2,7 +2,7 @@ import { DemManager, LocalDemManager } from "./dem-manager";
 import { decodeOptions, encodeOptions, getOptionsForZoom } from "./utils";
 import RemoteDemManager from "./remote-dem-manager";
 import { DemTile, Cancelable, GlobalContourTileOptions, Timing } from "./types";
-import type { WorkerDispatch } from "./worker";
+import type WorkerDispatch from "./worker-dispatch";
 import Actor from "./actor";
 import { Timer } from "./performance";
 
@@ -54,7 +54,7 @@ export class DemSource {
     cacheSize = 100,
     id = "dem",
     encoding = "terrarium",
-    maxzoom = 11,
+    maxzoom = 12,
     worker = true,
     timeoutMs = 10_000,
     actor,

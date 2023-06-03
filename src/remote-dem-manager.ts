@@ -1,6 +1,6 @@
 import Actor from "./actor";
 import CONFIG from "./config";
-import type { WorkerDispatch } from "./worker";
+import type WorkerDispatch from "./worker-dispatch";
 import decodeImage from "./decode-image";
 import type { DemManager } from "./dem-manager";
 import { Timer } from "./performance";
