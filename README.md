@@ -1,6 +1,8 @@
 # Maplibre-contour
 
-Maplibre-contour is a plugin to redner contour lines in [Maplibre GL JS](https://github.com/maplibre/maplibre-gl-js) from `raster-dem` sources. It registers a vector tile provider using maplibre's `addProtocol` utility that fetches raster-dem tiles, generates contour lines, and returns an encoded vector tile each time a tile is requested.
+Maplibre-contour is a plugin to render contour lines in [Maplibre GL JS](https://github.com/maplibre/maplibre-gl-js) from `raster-dem` sources that powers the terrain mode for [onthegomap.com](https://onthegomap.com). It registers a vector tile provider using maplibre's `addProtocol` utility that fetches raster-dem tiles, generates contour lines, and returns an encoded vector tile each time a tile is requested.
+
+![Topographic map of Mount Washington](demo.png)
 
 [Live example](https://onthegomap.github.io/maplibre-contour) | [Code](./index.html)
 
