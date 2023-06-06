@@ -1,6 +1,6 @@
-# maplibre-contour
+# Maplibre-contour
 
-Maplibre-contour renders contour lines in [Maplibre GL JS](https://github.com/maplibre/maplibre-gl-js) from `raster-dem` sources. It registers a vector tile provider using maplibre's `addProtocol` utility that fetches raster-dem tiles, generates contour lines, and returns an encoded vector tile each time a tile is requested.
+Maplibre-contour is a plugin to redner contour lines in [Maplibre GL JS](https://github.com/maplibre/maplibre-gl-js) from `raster-dem` sources. It registers a vector tile provider using maplibre's `addProtocol` utility that fetches raster-dem tiles, generates contour lines, and returns an encoded vector tile each time a tile is requested.
 
 [Live example](https://onthegomap.github.io/maplibre-contour) | [Code](./index.html)
 
@@ -37,7 +37,7 @@ map.addSource("contour-source", {
   type: "vector",
   tiles: [
     demSource.contourProtocolUrl({
-      // meters to feet, default=1
+      // convert meters to feet, default=1 for meters
       multiplier: 3.28084,
       thresholds: {
         // zoom: [minor, major]
