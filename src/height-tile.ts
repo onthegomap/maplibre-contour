@@ -6,6 +6,7 @@ function defaultIsValid(number: number): boolean {
   return !isNaN(number) && number >= MIN_VALID_M && number <= MAX_VALID_M;
 }
 
+/** A tile containing elevation values aligned to a grid. */
 export class HeightTile {
   get: (x: number, y: number) => number;
   width: number;
@@ -23,6 +24,7 @@ export class HeightTile {
     this.isValid = isValid;
   }
 
+  /** Construct a height tile from raw DEM pixel values */
   static fromRawDem(demTile: DemTile): HeightTile {
     return new HeightTile(
       demTile.width,
@@ -31,6 +33,12 @@ export class HeightTile {
     );
   }
 
+  /**
+   * Construct a height tile from a DEM tile plus it's 8 neighbors, so that
+   * you can request `x` or `y` outside the bounds of the original tile.
+   *
+   * @param neighbors An array containing tiles: `[nw, n, ne, w, c, e, sw, s, se]`
+   */
   static combineNeighbors(
     neighbors: (HeightTile | undefined)[]
   ): HeightTile | undefined {
@@ -71,6 +79,9 @@ export class HeightTile {
     );
   }
 
+  /**
+   * Splits this tile into a `1<<subz` x `1<<subz` grid and returns the tile at coordinates `subx, suby`.
+   */
   split = (subz: number, subx: number, suby: number): HeightTile => {
     if (subz === 0) return this;
     const by = 1 << subz;
@@ -84,6 +95,12 @@ export class HeightTile {
     );
   };
 
+  /**
+   * Returns a new tile scaled up by `factor` with pixel values that are subsampled using
+   * bilinear interpolation between the original height tile values.
+   *
+   * The original and result tile are assumed to represent values taken at the center of each pixel.
+   */
   subsamplePixelCenters = (factor: number): HeightTile => {
     const lerp = (a: number, b: number, f: number) =>
       !this.isValid(a) ? b : !this.isValid(b) ? a : a + (b - a) * f;
@@ -112,6 +129,11 @@ export class HeightTile {
     );
   };
 
+  /**
+   * Assumes the input tile represented measurements taken at the center of each pixel, and
+   * returns a new tile where values are the height at the top-left of each pixel by averaging
+   * the 4 adjacent pixel values.
+   */
   averagePixelCentersToGrid = (radius: number = 1): HeightTile =>
     new HeightTile(
       this.width + 1,
@@ -133,6 +155,7 @@ export class HeightTile {
       this.isValid
     );
 
+  /** Returns a new tile with elevation values scaled by `multiplier`. */
   scaleElevation = (multiplier: number): HeightTile =>
     multiplier === 1
       ? this

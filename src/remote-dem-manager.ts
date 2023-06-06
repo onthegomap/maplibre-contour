@@ -31,6 +31,9 @@ function defaultActor(): Actor<WorkerDispatch> {
   return _actor;
 }
 
+/**
+ * Caches, decodes, and processes raster tiles in a shared web worker.
+ */
 export default class RemoteDemManager implements DemManager {
   managerId: number;
   actor: Actor<WorkerDispatch>;

@@ -9,6 +9,10 @@ interface CacheItem<V> {
 
 let num = 0;
 
+/**
+ * LRU Cache for CancelablePromises.
+ * The underlying request is only canceled when all callers have canceled their usage of it.
+ */
 export default class AsyncCache<K, V> {
   maxSize: number;
   items: Map<K, CacheItem<V>>;

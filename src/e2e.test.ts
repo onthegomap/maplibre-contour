@@ -1,7 +1,7 @@
 import { flattenDeep } from "lodash";
 import Actor from "./actor";
 import WorkerDispatch from "./worker-dispatch";
-import { DemSource } from "./protocol";
+import { DemSource } from "./dem-source";
 import { MainThreadDispatch } from "./remote-dem-manager";
 import { CancelablePromise, DemTile, Timing } from "./types";
 import { VectorTile } from "@mapbox/vector-tile";

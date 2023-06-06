@@ -59,6 +59,9 @@ interface Context {
   feature?: Feature;
 }
 
+/**
+ * Enodes and serializes a mapbox vector tile as an array of bytes.
+ */
 export default function encodeVectorTile(tile: Tile): Uint8Array {
   const pbf = new Pbf();
   for (const id in tile.layers) {

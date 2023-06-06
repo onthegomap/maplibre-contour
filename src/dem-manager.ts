@@ -14,6 +14,10 @@ import {
 import encodeVectorTile, { GeomType } from "./vtpbf";
 import { Timer } from "./performance";
 
+/**
+ * Holds cached tile state, and exposes `fetchContourTile` which fetches the necessary
+ * tiles and returns an encoded contour vector tiles.
+ */
 export interface DemManager {
   loaded: Promise<any>;
   fetchTile(
@@ -37,6 +41,9 @@ export interface DemManager {
   ): CancelablePromise<ContourTile>;
 }
 
+/**
+ * Caches, decodes, and processes raster tiles in the current thread.
+ */
 export class LocalDemManager implements DemManager {
   tileCache: AsyncCache<string, FetchResponse>;
   parsedCache: AsyncCache<string, DemTile>;

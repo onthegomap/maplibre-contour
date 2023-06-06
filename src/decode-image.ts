@@ -9,6 +9,10 @@ let offscreenContext: OffscreenCanvasRenderingContext2D | null;
 let canvas: HTMLCanvasElement;
 let canvasContext: CanvasRenderingContext2D | null;
 
+/**
+ * Parses a `raster-dem` image into a DemTile using OffscreenCanvas and createImageBitmap
+ * only supported on newer browsers.
+ */
 function decodeImageModern(
   blob: Blob,
   encoding: Encoding
@@ -33,6 +37,10 @@ function decodeImageModern(
   };
 }
 
+/**
+ * Parses a `raster-dem` image into a DemTile using `<img>` element drawn to a `<canvas>`.
+ * Only works on the main thread, but works across all browsers.
+ */
 function decodeImageOld(
   blob: Blob,
   encoding: Encoding
@@ -65,6 +73,10 @@ function decodeImageOld(
   };
 }
 
+/**
+ * Parses a `raster-dem` image in a worker that doesn't support OffscreenCanvas and createImageBitmap
+ * by running decodeImageOld on the main thread and returning the result.
+ */
 function decodeImageOnMainThread(
   blob: Blob,
   encoding: Encoding

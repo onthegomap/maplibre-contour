@@ -3,15 +3,18 @@
   "version": "0.0.1",
   "description": "Render contour lines from raster elevation tiles in maplibre-gl-js",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "rollup -c",
+    "build": "rm -rf dist && rollup -c && npm run generate-types && tsc --project tsconfig.dist.json",
+    "generate-types": "tsc --emitDeclarationOnly --declaration --outDir dist",
     "jest": "jest",
     "jest:watch": "jest --watch",
     "test": "run-p typecheck lint jest checkformat",
     "lint": "eslint src/**",
     "format": "prettier src --write",
     "checkformat": "prettier src --check",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run test && npm run build"
   },
   "repository": {
     "type": "git",

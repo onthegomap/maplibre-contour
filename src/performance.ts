@@ -24,6 +24,8 @@ function flatten<T>(input: T[][]): T[] {
   }
   return result;
 }
+
+/** Utility for tracking how long tiles take to generate, and where the time is going. */
 export class Timer {
   marks: { [key in TimingCategory]?: number[][] } = {};
   urls: string[] = [];
