@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "rm -rf dist && rollup -c && npm run generate-types && tsc --project tsconfig.dist.json",
-    "generate-types": "tsc --emitDeclarationOnly --declaration --outDir dist",
+    "generate-types": "tsc --emitDeclarationOnly --declaration --outDir dist && rm -rf dist/*{.t,-j}est.d.ts",
     "jest": "jest",
     "jest:watch": "jest --watch",
     "test": "run-p typecheck lint jest checkformat",
