@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "ES2019",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "strict": true,
     "moduleResolution": "node",
     "allowJs": true,
-    "paths": {},
+    "skipLibCheck": false,
     "types": ["jest", "node"],
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
