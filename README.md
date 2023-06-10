@@ -79,6 +79,7 @@ map.addLayer({
   type: "symbol",
   source: "contour-source",
   "source-layer": "contours",
+  filter: [">", ["get", "level"], 0],
   layout: {
     "symbol-placement": "line",
     "text-size": 10,
