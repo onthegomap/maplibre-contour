@@ -107,11 +107,7 @@ map.addSource("dem", {
 
 # How it works
 
-<style>
-  img[alt='Architecture diagram'] { max-width: 400px; }
-</style>
-
-![Architecture diagram](architecture.png)
+<img src="architecture.png" style="max-width: 400px">
 
 [`DemSource.setupMaplibre`](./src/dem-source.ts) uses MapLibre's [`addProtocol`](https://maplibre.org/maplibre-gl-js-docs/api/properties/#addprotocol) utility to register a callback to provide vector tile for the contours source. Each time maplibre requests a vector tile:
 
