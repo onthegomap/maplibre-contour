@@ -153,14 +153,14 @@ suite
 
 /*
 on m1 mac:
-53.62ms switzerland 512px x 18.65 ops/sec ±0.51% (88 runs sampled)
-29.16ms switzerland 512px x 34.29 ops/sec ±0.51% (82 runs sampled)
-32.83ms switzerland 512px overzoomed hilly x 30.46 ops/sec ±0.59% (74 runs sampled)
-3.307ms switzerland 512px overzoomed flat x 302 ops/sec ±0.34% (89 runs sampled)
-6.839ms switzerland 512px very overzoomed x 146 ops/sec ±0.42% (86 runs sampled)
-31.39ms everest 256px overzoomed x 31.85 ops/sec ±0.49% (77 runs sampled)
-2.153ms everest 256px z12 x 464 ops/sec ±0.35% (91 runs sampled)
-25.39ms everest 256px overzoomed z15 x 39.38 ops/sec ±0.62% (65 runs sampled)
-5.312ms everest 256px overzoomed z18 x 188 ops/sec ±0.37% (89 runs sampled)
-190.0ms total
+32.53ms switzerland 512px x 30.74 ops/sec ±0.50% (74 runs sampled)
+18.60ms switzerland 512px x 53.75 ops/sec ±0.40% (85 runs sampled)
+20.66ms switzerland 512px overzoomed hilly x 48.41 ops/sec ±0.42% (77 runs sampled)
+2.780ms switzerland 512px overzoomed flat x 360 ops/sec ±0.29% (89 runs sampled)
+5.376ms switzerland 512px very overzoomed x 186 ops/sec ±0.36% (87 runs sampled)
+14.61ms everest 256px overzoomed x 68.45 ops/sec ±0.57% (82 runs sampled)
+2.121ms everest 256px z12 x 472 ops/sec ±0.23% (92 runs sampled)
+11.61ms everest 256px overzoomed z15 x 86.10 ops/sec ±0.53% (82 runs sampled)
+3.492ms everest 256px overzoomed z18 x 286 ops/sec ±0.57% (89 runs sampled)
+111.8ms total
 */
