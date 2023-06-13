@@ -188,7 +188,7 @@ export class LocalDemManager implements DemManager {
       contourLayer = "contours",
       elevationKey = "ele",
       levelKey = "level",
-      subsampleBelow = 0,
+      subsampleBelow = 100,
     } = options;
 
     // no levels means less than min zoom with levels specified
