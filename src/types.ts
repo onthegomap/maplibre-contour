@@ -59,6 +59,8 @@ export interface ContourTileOptions {
   extent?: number;
   /** How many pixels to generate on each tile into the neighboring tile to reduce rendering artifacts */
   buffer?: number;
+  /** When overzooming tiles, subsample to scale up to at least this size to make the contour lines smoother at higher zooms. */
+  subsampleBelow?: number;
 }
 
 export interface GlobalContourTileOptions extends ContourTileOptions {

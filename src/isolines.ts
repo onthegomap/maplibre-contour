@@ -187,11 +187,8 @@ export default function generateIsolines(
   let tld: number, trd: number, bld: number, brd: number;
   let r: number, c: number;
   const segments: { [ele: string]: number[][] } = {};
-  const fragmentByStartByLevel: {
-    [ele: number]: { [start: number]: Fragment };
-  } = {};
-  const fragmentByEndByLevel: { [ele: number]: { [end: number]: Fragment } } =
-    {};
+  const fragmentByStartByLevel: Map<number, Map<number, Fragment>> = new Map();
+  const fragmentByEndByLevel: Map<number, Map<number, Fragment>> = new Map();
 
   function interpolate(
     point: [number, number],
@@ -236,12 +233,7 @@ export default function generateIsolines(
       const maxL = maxR;
       minR = Math.min(trd, brd);
       maxR = Math.max(trd, brd);
-      if (
-        !tile.isValid(tld) ||
-        !tile.isValid(trd) ||
-        !tile.isValid(brd) ||
-        !tile.isValid(bld)
-      ) {
+      if (isNaN(tld) || isNaN(trd) || isNaN(brd) || isNaN(bld)) {
         continue;
       }
       const min = Math.min(minL, minR);
@@ -256,22 +248,25 @@ export default function generateIsolines(
         for (const segment of CASES[
           (tl ? 8 : 0) | (tr ? 4 : 0) | (br ? 2 : 0) | (bl ? 1 : 0)
         ]) {
-          const fragmentByStart =
-            fragmentByStartByLevel[threshold] ||
-            (fragmentByStartByLevel[threshold] = {});
-          const fragmentByEnd =
-            fragmentByEndByLevel[threshold] ||
-            (fragmentByEndByLevel[threshold] = {});
+          let fragmentByStart = fragmentByStartByLevel.get(threshold);
+          if (!fragmentByStart)
+            fragmentByStartByLevel.set(
+              threshold,
+              (fragmentByStart = new Map())
+            );
+          let fragmentByEnd = fragmentByEndByLevel.get(threshold);
+          if (!fragmentByEnd)
+            fragmentByEndByLevel.set(threshold, (fragmentByEnd = new Map()));
           const start = segment[0];
           const end = segment[1];
           const startIndex = index(tile.width, c, r, start);
           const endIndex = index(tile.width, c, r, end);
           let f, g;
 
-          if ((f = fragmentByEnd[startIndex])) {
-            delete fragmentByEnd[startIndex];
-            if ((g = fragmentByStart[endIndex])) {
-              delete fragmentByStart[endIndex];
+          if ((f = fragmentByEnd.get(startIndex))) {
+            fragmentByEnd.delete(startIndex);
+            if ((g = fragmentByStart.get(endIndex))) {
+              fragmentByStart.delete(endIndex);
               if (f === g) {
                 // closing a ring
                 interpolate(end, threshold, f.append);
@@ -285,36 +280,34 @@ export default function generateIsolines(
               } else {
                 // connecting 2 segments
                 f.appendFragment(g);
-                fragmentByEnd[(f.end = g.end)] = f;
+                fragmentByEnd.set((f.end = g.end), f);
               }
             } else {
               // adding to the end of f
               interpolate(end, threshold, f.append);
-              fragmentByEnd[(f.end = endIndex)] = f;
+              fragmentByEnd.set((f.end = endIndex), f);
             }
-          } else if ((f = fragmentByStart[endIndex])) {
-            delete fragmentByStart[endIndex];
+          } else if ((f = fragmentByStart.get(endIndex))) {
+            fragmentByStart.delete(endIndex);
             // extending the start of f
             interpolate(start, threshold, f.prepend);
-            fragmentByStart[(f.start = startIndex)] = f;
+            fragmentByStart.set((f.start = startIndex), f);
           } else {
             // starting a new fragment
             const newFrag = new Fragment(startIndex, endIndex);
             interpolate(start, threshold, newFrag.append);
             interpolate(end, threshold, newFrag.append);
-            fragmentByStart[startIndex] = newFrag;
-            fragmentByEnd[endIndex] = newFrag;
+            fragmentByStart.set(startIndex, newFrag);
+            fragmentByEnd.set(endIndex, newFrag);
           }
         }
       }
     }
   }
 
-  for (const [level, fragmentByStart] of Object.entries(
-    fragmentByStartByLevel
-  )) {
+  for (const [level, fragmentByStart] of fragmentByStartByLevel.entries()) {
     let list: number[][] | null = null;
-    for (const value of Object.values(fragmentByStart)) {
+    for (const value of fragmentByStart.values()) {
       if (!value.isEmpty()) {
         if (list == null) {
           list = segments[level] || (segments[level] = []);
