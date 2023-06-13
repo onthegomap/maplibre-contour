@@ -164,7 +164,7 @@ test("e2e contour tile", async () => {
     l: 0,
   });
   const geom = tile.layers.c.feature(0).loadGeometry()[0];
-  expect(geom.length).toEqual(13);
+  expect(geom.length).toEqual(253);
 
   let xSum = 0,
     ySum = 0;
@@ -172,10 +172,10 @@ test("e2e contour tile", async () => {
     xSum += x;
     ySum += y;
   }
-  const center = { x: Math.round(xSum / 13), y: Math.round(ySum / 13) };
+  const center = { x: Math.round(xSum / 253), y: Math.round(ySum / 253) };
   expect(center).toMatchObject({
-    x: 2119,
-    y: 2087,
+    x: 2049,
+    y: 2052,
   });
   expect(timings).toMatchObject([
     {

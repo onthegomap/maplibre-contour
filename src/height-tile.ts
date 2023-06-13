@@ -11,26 +11,22 @@ export class HeightTile {
   get: (x: number, y: number) => number;
   width: number;
   height: number;
-  isValid: (ele: number) => boolean;
   constructor(
     width: number,
     height: number,
-    get: (x: number, y: number) => number,
-    isValid = defaultIsValid
+    get: (x: number, y: number) => number
   ) {
     this.get = get;
     this.width = width;
     this.height = height;
-    this.isValid = isValid;
   }
 
   /** Construct a height tile from raw DEM pixel values */
   static fromRawDem(demTile: DemTile): HeightTile {
-    return new HeightTile(
-      demTile.width,
-      demTile.height,
-      (x, y) => demTile.data[y * demTile.width + x]
-    );
+    return new HeightTile(demTile.width, demTile.height, (x, y) => {
+      const value = demTile.data[y * demTile.width + x];
+      return defaultIsValid(value) ? value : NaN;
+    });
   }
 
   /**
@@ -51,32 +47,27 @@ export class HeightTile {
     }
     const width = mainTile.width;
     const height = mainTile.height;
-    return new HeightTile(
-      width,
-      height,
-      (x, y) => {
-        let gridIdx = 0;
-        if (y < 0) {
-          y += height;
-        } else if (y < height) {
-          gridIdx += 3;
-        } else {
-          y -= height;
-          gridIdx += 6;
-        }
-        if (x < 0) {
-          x += width;
-        } else if (x < width) {
-          gridIdx += 1;
-        } else {
-          x -= width;
-          gridIdx += 2;
-        }
-        const grid = neighbors[gridIdx];
-        return grid ? grid.get(x, y) : NaN;
-      },
-      mainTile.isValid
-    );
+    return new HeightTile(width, height, (x, y) => {
+      let gridIdx = 0;
+      if (y < 0) {
+        y += height;
+      } else if (y < height) {
+        gridIdx += 3;
+      } else {
+        y -= height;
+        gridIdx += 6;
+      }
+      if (x < 0) {
+        x += width;
+      } else if (x < width) {
+        gridIdx += 1;
+      } else {
+        x -= width;
+        gridIdx += 2;
+      }
+      const grid = neighbors[gridIdx];
+      return grid ? grid.get(x, y) : NaN;
+    });
   }
 
   /**
@@ -87,11 +78,8 @@ export class HeightTile {
     const by = 1 << subz;
     const dx = (subx * this.width) / by;
     const dy = (suby * this.height) / by;
-    return new HeightTile(
-      this.width / by,
-      this.height / by,
-      (x, y) => this.get(x + dx, y + dy),
-      this.isValid
+    return new HeightTile(this.width / by, this.height / by, (x, y) =>
+      this.get(x + dx, y + dy)
     );
   };
 
@@ -103,7 +91,7 @@ export class HeightTile {
    */
   subsamplePixelCenters = (factor: number): HeightTile => {
     const lerp = (a: number, b: number, f: number) =>
-      !this.isValid(a) ? b : !this.isValid(b) ? a : a + (b - a) * f;
+      isNaN(a) ? b : isNaN(b) ? a : a + (b - a) * f;
     if (factor <= 1) return this;
     const sub = 0.5 - 1 / (2 * factor);
     const blerper = (x: number, y: number) => {
@@ -121,12 +109,7 @@ export class HeightTile {
       const bottom = lerp(c, d, fx);
       return lerp(top, bottom, fy);
     };
-    return new HeightTile(
-      this.width * factor,
-      this.height * factor,
-      blerper,
-      this.isValid
-    );
+    return new HeightTile(this.width * factor, this.height * factor, blerper);
   };
 
   /**
@@ -135,25 +118,20 @@ export class HeightTile {
    * the 4 adjacent pixel values.
    */
   averagePixelCentersToGrid = (radius: number = 1): HeightTile =>
-    new HeightTile(
-      this.width + 1,
-      this.height + 1,
-      (x, y) => {
-        let sum = 0,
-          count = 0,
-          v = 0;
-        for (let newX = x - radius; newX < x + radius; newX++) {
-          for (let newY = y - radius; newY < y + radius; newY++) {
-            if (this.isValid((v = this.get(newX, newY)))) {
-              count++;
-              sum += v;
-            }
+    new HeightTile(this.width + 1, this.height + 1, (x, y) => {
+      let sum = 0,
+        count = 0,
+        v = 0;
+      for (let newX = x - radius; newX < x + radius; newX++) {
+        for (let newY = y - radius; newY < y + radius; newY++) {
+          if (!isNaN((v = this.get(newX, newY)))) {
+            count++;
+            sum += v;
           }
         }
-        return count === 0 ? NaN : sum / count;
-      },
-      this.isValid
-    );
+      }
+      return count === 0 ? NaN : sum / count;
+    });
 
   /** Returns a new tile with elevation values scaled by `multiplier`. */
   scaleElevation = (multiplier: number): HeightTile =>
@@ -162,7 +140,27 @@ export class HeightTile {
       : new HeightTile(
           this.width,
           this.height,
-          (x, y) => this.get(x, y) * multiplier,
-          (ele) => this.isValid(ele / multiplier)
+          (x, y) => this.get(x, y) * multiplier
         );
+
+  /**
+   * Precompute every value from `-bufer, -buffer` to `width + buffer, height + buffer` and serve them
+   * out of a `Float32Array`. Until this method is called, all `get` requests are lazy and call all previous
+   * methods in the chain up to the root DEM tile.
+   */
+  materialize = (buffer: number = 2): HeightTile => {
+    const stride = this.width + 2 * buffer;
+    const data = new Float32Array(stride * (this.height + 2 * buffer));
+    let idx = 0;
+    for (let y = -buffer; y < this.height + buffer; y++) {
+      for (let x = -buffer; x < this.width + buffer; x++) {
+        data[idx++] = this.get(x, y);
+      }
+    }
+    return new HeightTile(
+      this.width,
+      this.height,
+      (x, y) => data[(y + buffer) * stride + x + buffer]
+    );
+  };
 }

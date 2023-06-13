@@ -188,6 +188,7 @@ export class LocalDemManager implements DemManager {
       contourLayer = "contours",
       elevationKey = "ele",
       levelKey = "level",
+      subsampleBelow = 0,
     } = options;
 
     // no levels means less than min zoom with levels specified
@@ -217,16 +218,21 @@ export class LocalDemManager implements DemManager {
           if (!virtualTile || canceled) {
             return { arrayBuffer: new Uint8Array().buffer };
           }
+          const mark = timer?.marker("isoline");
 
-          if (virtualTile.width < 100) {
-            virtualTile = virtualTile.subsamplePixelCenters(2);
+          if (virtualTile.width >= subsampleBelow) {
+            virtualTile = virtualTile.materialize(2);
+          } else {
+            while (virtualTile.width < subsampleBelow) {
+              virtualTile = virtualTile.subsamplePixelCenters(2).materialize(2);
+            }
           }
 
           virtualTile = virtualTile
             .averagePixelCentersToGrid()
-            .scaleElevation(multiplier);
+            .scaleElevation(multiplier)
+            .materialize(1);
 
-          const mark = timer?.marker("isoline");
           const isolines = generateIsolines(
             levels[0],
             virtualTile,

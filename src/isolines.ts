@@ -236,12 +236,7 @@ export default function generateIsolines(
       const maxL = maxR;
       minR = Math.min(trd, brd);
       maxR = Math.max(trd, brd);
-      if (
-        !tile.isValid(tld) ||
-        !tile.isValid(trd) ||
-        !tile.isValid(brd) ||
-        !tile.isValid(bld)
-      ) {
+      if (isNaN(tld) || isNaN(trd) || isNaN(brd) || isNaN(bld)) {
         continue;
       }
       const min = Math.min(minL, minR);
