@@ -120,10 +120,6 @@ function getElevations(
     | OffscreenCanvasRenderingContext2D
     | null
 ): DemTile {
-  const decode: (r: number, g: number, b: number) => number =
-    encoding === "mapbox"
-      ? (r, g, b) => -10000 + (r * 256 * 256 + g * 256 + b) * 0.1
-      : (r, g, b) => r * 256 + g + b / 256 - 32768;
   canvas.width = img.width;
   canvas.height = img.height;
 
@@ -132,9 +128,22 @@ function getElevations(
   canvasContext.drawImage(img, 0, 0, img.width, img.height);
 
   const rgba = canvasContext.getImageData(0, 0, img.width, img.height).data;
-  const data = new Float32Array(img.width * img.height);
-  for (let i = 0; i < rgba.length; i += 4) {
-    data[i / 4] = decode(rgba[i], rgba[i + 1], rgba[i + 2]);
+  return decodeParsedImage(img.width, img.height, encoding, rgba);
+}
+
+export function decodeParsedImage(
+  width: number,
+  height: number,
+  encoding: Encoding,
+  input: Uint8ClampedArray
+): DemTile {
+  const decoder: (r: number, g: number, b: number) => number =
+    encoding === "mapbox"
+      ? (r, g, b) => -10000 + (r * 256 * 256 + g * 256 + b) * 0.1
+      : (r, g, b) => r * 256 + g + b / 256 - 32768;
+  const data = new Float32Array(width * height);
+  for (let i = 0; i < input.length; i += 4) {
+    data[i / 4] = decoder(input[i], input[i + 1], input[i + 2]);
   }
-  return { width: img.width, height: img.height, data };
+  return { width, height, data };
 }

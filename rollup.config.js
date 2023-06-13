@@ -9,12 +9,12 @@ export const nodeResolve = resolve({
   preferBuiltins: false,
 });
 
-const create = (file, plugins = []) => ({
+const create = (file, format, plugins = []) => ({
   input: "build/mlcontour.js",
   output: {
     name: "mlcontour",
     file,
-    format: "umd",
+    format,
     intro: fs.readFileSync("build/bundle_prelude.js", "utf8"),
   },
   treeshake: false,
@@ -37,6 +37,8 @@ export default [
     treeshake: true,
     plugins: [nodeResolve, typescript(), commonjs()],
   },
-  create("dist/index.js"),
-  create("dist/index.min.js", [terser()]),
+  create("dist/index.cjs", "cjs"),
+  create("dist/index.mjs", "esm"),
+  create("dist/index.js", "umd"),
+  create("dist/index.min.js", "umd", [terser()]),
 ];

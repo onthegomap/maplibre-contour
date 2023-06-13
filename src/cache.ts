@@ -87,4 +87,6 @@ export default class AsyncCache<K, V> {
       }
     }
   }
+
+  clear = () => this.items.clear();
 }
