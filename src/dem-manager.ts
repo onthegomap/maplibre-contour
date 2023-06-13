@@ -53,6 +53,8 @@ export class LocalDemManager implements DemManager {
   maxzoom: number;
   timeoutMs: number;
   loaded = Promise.resolve();
+  decodeImage: (blob: Blob, encoding: Encoding) => CancelablePromise<DemTile> =
+    decodeImage;
 
   constructor(
     demUrlPattern: string,
@@ -109,12 +111,12 @@ export class LocalDemManager implements DemManager {
       });
     });
   }
-  fetchAndParseTile(
+  fetchAndParseTile = (
     z: number,
     x: number,
     y: number,
     timer?: Timer
-  ): CancelablePromise<DemTile> {
+  ): CancelablePromise<DemTile> => {
     const self = this;
     const url = this.demUrlPattern
       .replace("{z}", z.toString())
@@ -130,7 +132,7 @@ export class LocalDemManager implements DemManager {
       return {
         value: tile.value.then(async (response) => {
           if (canceled) throw new Error("canceled");
-          const result = decodeImage(response.data, this.encoding);
+          const result = self.decodeImage(response.data, self.encoding);
           alsoCancel = result.cancel;
           const mark = timer?.marker("decode");
           const value = await result.value;
@@ -144,7 +146,7 @@ export class LocalDemManager implements DemManager {
         },
       };
     });
-  }
+  };
 
   fetchDem(
     z: number,
