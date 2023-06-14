@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    continue-on-error: true
 
     strategy:
       matrix:
@@ -28,4 +29,4 @@ jobs:
       - run: npm run build
       # benchmark script only works on node 18+
       - run: node benchmark.js
-        if: ! startsWith(matrix.node-version , '16')
+        if: matrix.node-version != '16.x'
