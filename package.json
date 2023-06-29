@@ -38,7 +38,7 @@
     "@rollup/plugin-commonjs": "25.0.2",
     "@rollup/plugin-node-resolve": "15.1.0",
     "@rollup/plugin-terser": "0.4.3",
-    "@rollup/plugin-typescript": "11.1.1",
+    "@rollup/plugin-typescript": "11.1.2",
     "@types/benchmark": "2.1.2",
     "@types/jest": "29.5.2",
     "@types/lodash": "4.14.195",
