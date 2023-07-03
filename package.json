@@ -58,7 +58,7 @@
     "pngjs": "7.0.0",
     "prettier": "2.8.8",
     "rollup": "3.25.3",
-    "ts-jest": "29.1.0",
+    "ts-jest": "29.1.1",
     "typescript": "5.1.5",
     "whatwg-fetch": "3.6.2"
   }
