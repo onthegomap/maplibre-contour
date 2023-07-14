@@ -29,7 +29,7 @@ for (let i = 0; i < 9; i++) {
       width: 2,
       height: 2,
       data: Float32Array.from([start, start + 1, start + 6, start + 7]),
-    })
+    }),
   );
 }
 

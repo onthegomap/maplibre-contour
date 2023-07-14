@@ -32,7 +32,7 @@ export default class AsyncCache<K, V> {
 
   getCancelable = (
     key: K,
-    supplier: (key: K) => CancelablePromise<V>
+    supplier: (key: K) => CancelablePromise<V>,
   ): { value: Promise<V>; cancel: () => void } => {
     let result: CacheItem<V> | undefined = this.items.get(key);
     if (!result) {
@@ -55,7 +55,7 @@ export default class AsyncCache<K, V> {
       (e) => {
         items.delete(key);
         return Promise.reject(e);
-      }
+      },
     );
     let canceled = false;
     return {

@@ -14,7 +14,7 @@ export class HeightTile {
   constructor(
     width: number,
     height: number,
-    get: (x: number, y: number) => number
+    get: (x: number, y: number) => number,
   ) {
     this.get = get;
     this.width = width;
@@ -36,7 +36,7 @@ export class HeightTile {
    * @param neighbors An array containing tiles: `[nw, n, ne, w, c, e, sw, s, se]`
    */
   static combineNeighbors(
-    neighbors: (HeightTile | undefined)[]
+    neighbors: (HeightTile | undefined)[],
   ): HeightTile | undefined {
     if (neighbors.length !== 9) {
       throw new Error("Must include a tile plus 8 neighbors");
@@ -79,7 +79,7 @@ export class HeightTile {
     const dx = (subx * this.width) / by;
     const dy = (suby * this.height) / by;
     return new HeightTile(this.width / by, this.height / by, (x, y) =>
-      this.get(x + dx, y + dy)
+      this.get(x + dx, y + dy),
     );
   };
 
@@ -140,7 +140,7 @@ export class HeightTile {
       : new HeightTile(
           this.width,
           this.height,
-          (x, y) => this.get(x, y) * multiplier
+          (x, y) => this.get(x, y) * multiplier,
         );
 
   /**
@@ -160,7 +160,7 @@ export class HeightTile {
     return new HeightTile(
       this.width,
       this.height,
-      (x, y) => data[(y + buffer) * stride + x + buffer]
+      (x, y) => data[(y + buffer) * stride + x + buffer],
     );
   };
 }

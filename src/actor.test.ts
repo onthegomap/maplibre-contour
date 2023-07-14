@@ -81,6 +81,6 @@ test("send and cancel messages", async () => {
   expect(remote.canceled).toBeTruthy();
 
   await expect(mainActor.send("remoteFail", []).value).rejects.toThrowError(
-    "Error: error"
+    "Error: error",
   );
 });

@@ -28,7 +28,7 @@ export default class WorkerDispatch {
       message.cacheSize,
       message.encoding,
       message.maxzoom,
-      message.timeoutMs
+      message.timeoutMs,
     );
     return { cancel() {}, value: Promise.resolve() };
   };
@@ -38,7 +38,7 @@ export default class WorkerDispatch {
     z: number,
     x: number,
     y: number,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<FetchResponse> =>
     this.managers[managerId]?.fetchTile(z, x, y, timer) || noManager(managerId);
 
@@ -47,12 +47,12 @@ export default class WorkerDispatch {
     z: number,
     x: number,
     y: number,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<TransferrableDemTile> =>
     prepareDemTile(
       this.managers[managerId]?.fetchAndParseTile(z, x, y, timer) ||
         noManager(managerId),
-      true
+      true,
     );
 
   fetchContourTile = (
@@ -61,10 +61,10 @@ export default class WorkerDispatch {
     x: number,
     y: number,
     options: IndividualContourTileOptions,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<ContourTile> =>
     prepareContourTile(
       this.managers[managerId]?.fetchContourTile(z, x, y, options, timer) ||
-        noManager(managerId)
+        noManager(managerId),
     );
 }

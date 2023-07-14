@@ -15,7 +15,7 @@ let canvasContext: CanvasRenderingContext2D | null;
  */
 function decodeImageModern(
   blob: Blob,
-  encoding: Encoding
+  encoding: Encoding,
 ): CancelablePromise<DemTile> {
   let canceled = false;
   const promise = createImageBitmap(blob).then((img) => {
@@ -43,7 +43,7 @@ function decodeImageModern(
  */
 function decodeImageOld(
   blob: Blob,
-  encoding: Encoding
+  encoding: Encoding,
 ): CancelablePromise<DemTile> {
   if (!canvas) {
     canvas = document.createElement("canvas");
@@ -62,7 +62,7 @@ function decodeImageOld(
     img.onerror = () => reject(new Error("Could not load image."));
     img.src = blob.size ? URL.createObjectURL(blob) : "";
   }).then((img: HTMLImageElement) =>
-    getElevations(img, encoding, canvas, canvasContext)
+    getElevations(img, encoding, canvas, canvasContext),
   );
   return {
     value,
@@ -79,14 +79,14 @@ function decodeImageOld(
  */
 function decodeImageOnMainThread(
   blob: Blob,
-  encoding: Encoding
+  encoding: Encoding,
 ): CancelablePromise<DemTile> {
   return ((self as any).actor as Actor<MainThreadDispatch>).send(
     "decodeImage",
     [],
     undefined,
     blob,
-    encoding
+    encoding,
   );
 }
 
@@ -102,7 +102,7 @@ function isWorker(): boolean {
 
 const defaultDecoder: (
   blob: Blob,
-  encoding: Encoding
+  encoding: Encoding,
 ) => CancelablePromise<DemTile> = offscreenCanvasSupported()
   ? decodeImageModern
   : isWorker()
@@ -118,7 +118,7 @@ function getElevations(
   canvasContext:
     | CanvasRenderingContext2D
     | OffscreenCanvasRenderingContext2D
-    | null
+    | null,
 ): DemTile {
   canvas.width = img.width;
   canvas.height = img.height;
@@ -135,7 +135,7 @@ export function decodeParsedImage(
   width: number,
   height: number,
   encoding: Encoding,
-  input: Uint8ClampedArray
+  input: Uint8ClampedArray,
 ): DemTile {
   const decoder: (r: number, g: number, b: number) => number =
     encoding === "mapbox"

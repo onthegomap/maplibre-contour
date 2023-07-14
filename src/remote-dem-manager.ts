@@ -45,7 +45,7 @@ export default class RemoteDemManager implements DemManager {
     encoding: Encoding,
     maxzoom: number,
     timeoutMs: number,
-    actor?: Actor<WorkerDispatch>
+    actor?: Actor<WorkerDispatch>,
   ) {
     const managerId = (this.managerId = ++id);
     this.actor = actor || defaultActor();
@@ -63,14 +63,14 @@ export default class RemoteDemManager implements DemManager {
     z: number,
     x: number,
     y: number,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<FetchResponse> =>
     this.actor.send("fetchTile", [], timer, this.managerId, z, x, y);
   fetchAndParseTile = (
     z: number,
     x: number,
     y: number,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<DemTile> =>
     this.actor.send("fetchAndParseTile", [], timer, this.managerId, z, x, y);
   fetchContourTile = (
@@ -78,7 +78,7 @@ export default class RemoteDemManager implements DemManager {
     x: number,
     y: number,
     options: IndividualContourTileOptions,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<ContourTile> =>
     this.actor.send(
       "fetchContourTile",
@@ -88,6 +88,6 @@ export default class RemoteDemManager implements DemManager {
       z,
       x,
       y,
-      options
+      options,
     );
 }

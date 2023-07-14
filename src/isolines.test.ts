@@ -12,7 +12,7 @@ runTestWithRotations(
   heightTile(1, 1, 1, 2.33333),
   {
     2: [[1, 0.75, 0.75, 1]],
-  }
+  },
 );
 
 runTestWithRotations("two contours", 2, heightTile(1, 1, 1, 5), {
@@ -26,7 +26,7 @@ runTestWithRotations(
   heightTile(1, 1, 2.33333, 2.33333),
   {
     2: [[1, 0.75, 0, 0.75]],
-  }
+  },
 );
 
 runTestWithRotations(
@@ -35,7 +35,7 @@ runTestWithRotations(
   heightTile(1, 1, 2.33333, 2.33333),
   {
     2: [[1, 0.75, 0, 0.75]],
-  }
+  },
 );
 
 runTestWithRotations("corner up to threshold", 2, heightTile(1, 1, 1, 2), {});
@@ -55,7 +55,7 @@ runTestWithRotations(
     [1, 2, 1, 1],
     [1, 1, 1, 1],
   ]),
-  {}
+  {},
 );
 runTestWithRotations(
   "corner below threshold",
@@ -66,7 +66,7 @@ runTestWithRotations(
   ]),
   {
     2: [[0.75, 0, 0, 0.75]],
-  }
+  },
 );
 runTest(
   "saddle",
@@ -81,7 +81,7 @@ runTest(
       [0.25, 1, 0, 0.75],
       [0.75, 0, 1, 0.25],
     ],
-  }
+  },
 );
 runTestWithRotations("no contours", 2, heightTile(1, 1, 1, 1), {});
 runTestWithRotations(
@@ -94,7 +94,7 @@ runTestWithRotations(
   ]),
   {
     2: [[0.5, 0, 1, 0.5, 1.5, 1, 2, 1.5]],
-  }
+  },
 );
 runTest(
   "center point above",
@@ -107,7 +107,7 @@ runTest(
   ]),
   {
     2: [[1.5, 1, 1, 0.5, 0.5, 1, 1, 1.5, 1.5, 1]],
-  }
+  },
 );
 runTest(
   "center point below",
@@ -120,7 +120,7 @@ runTest(
   ]),
   {
     2: [[1, 1.5, 0.5, 1, 1, 0.5, 1.5, 1, 1, 1.5]],
-  }
+  },
 );
 
 function heightTile(...values: number[] | number[][][]): HeightTile {
@@ -137,7 +137,7 @@ function runTestWithRotations(
   name: string,
   interval: number,
   heightTile: HeightTile,
-  expected: { [ele: number]: number[][] }
+  expected: { [ele: number]: number[][] },
 ) {
   for (const rotation of [0, 90, 180, 270]) {
     runTest(
@@ -145,7 +145,7 @@ function runTestWithRotations(
       rotation,
       interval,
       heightTile,
-      expected
+      expected,
     );
   }
 }
@@ -153,7 +153,7 @@ function runTestWithRotations(
 function rotate(
   [x, y]: [number, number],
   [ax, ay]: [number, number],
-  angle: number
+  angle: number,
 ): [number, number] {
   const theta = (angle * Math.PI) / 180;
   const sin = Math.sin(theta);
@@ -174,7 +174,7 @@ function runTest(
   rotation: number,
   interval: number,
   heightTile: HeightTile,
-  expected: { [ele: number]: number[][] }
+  expected: { [ele: number]: number[][] },
 ) {
   test(name, () => {
     const size = heightTile.width;
@@ -189,10 +189,10 @@ function runTest(
           throw new Error(`y=${y}`);
         }
         const [nx, ny] = rotate([x, y], [center, center], rotation).map(
-          round
+          round,
         ) as [number, number];
         return heightTile.get(nx, ny);
-      }
+      },
     );
     const isolines = generateIsolines(interval, rotatedHeightTile, 4096, 0);
     const rotatedResult: { [ele: number]: number[][] } = {};
@@ -206,7 +206,7 @@ function runTest(
               (rotatedLine[i + 1] * (size - 1)) / 4096,
             ],
             [center, center],
-            rotation
+            rotation,
           );
           rotatedLine[i] = x;
           rotatedLine[i + 1] = y;

@@ -25,7 +25,7 @@ jest.mock("./decode-image", () => (): CancelablePromise<DemTile> => {
         [5, 15, 15, 5],
         [5, 15, 15, 5],
         [5, 5, 5, 5],
-      ])
+      ]),
     ),
     width: 4,
     height: 4,
@@ -59,7 +59,7 @@ const expectedElevations = Float32Array.from(
     [5, 15, 15, 5],
     [5, 15, 15, 5],
     [5, 5, 5, 5],
-  ])
+  ]),
 );
 
 test("e2e fetch tile and shared DEM protocol share cache", async () => {
@@ -69,7 +69,7 @@ test("e2e fetch tile and shared DEM protocol share cache", async () => {
       new Blob([Uint8Array.from([1, 2])], { type: "image/png" }),
       {
         status: 200,
-      }
+      },
     );
   });
   const tile = await source.getDemTile(1, 2, 3);
@@ -92,7 +92,7 @@ test("e2e fetch tile and shared DEM protocol share cache", async () => {
       (err, data) => {
         if (err) reject(err);
         else resolve(data);
-      }
+      },
     );
   });
 
@@ -101,7 +101,7 @@ test("e2e fetch tile and shared DEM protocol share cache", async () => {
   expect(global.fetch).toBeCalledTimes(1);
   expect(global.fetch).toBeCalledWith(
     "https://example/1/2/3.png",
-    expect.anything()
+    expect.anything(),
   );
   expect(timings).toMatchObject([
     {
@@ -124,7 +124,7 @@ test("e2e contour tile", async () => {
       new Blob([Uint8Array.from([1, 2])], { type: "image/png" }),
       {
         status: 200,
-      }
+      },
     );
   });
   const timings: Timing[] = [];
@@ -150,7 +150,7 @@ test("e2e contour tile", async () => {
       (err, data) => {
         if (err) reject(err);
         else resolve(data);
-      }
+      },
     );
   });
 
@@ -244,7 +244,7 @@ test("e2e contour tile", async () => {
       (err, data) => {
         if (err) reject(err);
         else resolve(data);
-      }
+      },
     );
   });
   expect(timings[1]).toMatchObject({
@@ -284,7 +284,7 @@ test("decode image from worker", async () => {
     [],
     undefined,
     new Blob([], { type: "image/png" }),
-    "terrarium"
+    "terrarium",
   ).value;
   expect(result).toMatchObject({
     width: 4,
