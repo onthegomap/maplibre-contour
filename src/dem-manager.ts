@@ -24,20 +24,20 @@ export interface DemManager {
     z: number,
     x: number,
     y: number,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<FetchResponse>;
   fetchAndParseTile(
     z: number,
     x: number,
     y: number,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<DemTile>;
   fetchContourTile(
     z: number,
     x: number,
     y: number,
     options: IndividualContourTileOptions,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<ContourTile>;
 }
 
@@ -61,7 +61,7 @@ export class LocalDemManager implements DemManager {
     cacheSize: number,
     encoding: Encoding,
     maxzoom: number,
-    timeoutMs: number
+    timeoutMs: number,
   ) {
     this.tileCache = new AsyncCache(cacheSize);
     this.parsedCache = new AsyncCache(cacheSize);
@@ -76,7 +76,7 @@ export class LocalDemManager implements DemManager {
     z: number,
     x: number,
     y: number,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<FetchResponse> {
     const url = this.demUrlPattern
       .replace("{z}", z.toString())
@@ -115,7 +115,7 @@ export class LocalDemManager implements DemManager {
     z: number,
     x: number,
     y: number,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<DemTile> => {
     const self = this;
     const url = this.demUrlPattern
@@ -153,7 +153,7 @@ export class LocalDemManager implements DemManager {
     x: number,
     y: number,
     options: IndividualContourTileOptions,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<HeightTile> {
     const zoom = Math.min(z - (options.overzoom || 0), this.maxzoom);
     const subZ = z - zoom;
@@ -167,7 +167,7 @@ export class LocalDemManager implements DemManager {
 
     return {
       value: value.then((tile) =>
-        HeightTile.fromRawDem(tile).split(subZ, subX, subY)
+        HeightTile.fromRawDem(tile).split(subZ, subX, subY),
       ),
       cancel,
     };
@@ -178,7 +178,7 @@ export class LocalDemManager implements DemManager {
     x: number,
     y: number,
     options: IndividualContourTileOptions,
-    timer?: Timer
+    timer?: Timer,
   ): CancelablePromise<ContourTile> {
     const {
       levels,
@@ -208,7 +208,7 @@ export class LocalDemManager implements DemManager {
           neighborPromises.push(
             iy < 0 || iy >= max
               ? null
-              : this.fetchDem(z, (ix + max) % max, iy, options, timer)
+              : this.fetchDem(z, (ix + max) % max, iy, options, timer),
           );
         }
       }
@@ -237,7 +237,7 @@ export class LocalDemManager implements DemManager {
             levels[0],
             virtualTile,
             extent,
-            buffer
+            buffer,
           );
 
           mark?.();
@@ -253,7 +253,7 @@ export class LocalDemManager implements DemManager {
                     properties: {
                       [elevationKey]: ele,
                       [levelKey]: Math.max(
-                        ...levels.map((l, i) => (ele % l === 0 ? i : 0))
+                        ...levels.map((l, i) => (ele % l === 0 ? i : 0)),
                       ),
                     },
                   };
@@ -264,7 +264,7 @@ export class LocalDemManager implements DemManager {
           mark?.();
 
           return { arrayBuffer: result.buffer };
-        }
+        },
       );
 
       return {

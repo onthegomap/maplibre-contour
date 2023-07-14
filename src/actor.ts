@@ -36,7 +36,7 @@ export default class Actor<T> {
     [id: number]: (
       error: Error | undefined,
       message: any,
-      timings: Timing
+      timings: Timing,
     ) => void;
   };
   cancels: { [id: number]: () => void };
@@ -62,7 +62,7 @@ export default class Actor<T> {
           callback(
             message.error ? new Error(message.error) : undefined,
             message.response,
-            message.timings
+            message.timings,
           );
         }
       } else if (message.type === "request") {
@@ -83,7 +83,7 @@ export default class Actor<T> {
                 response,
                 timings: timer.finish(url),
               },
-              transferrables
+              transferrables,
             );
           } catch (e: any) {
             this.postMessage({
@@ -108,7 +108,7 @@ export default class Actor<T> {
     R,
     M extends MethodsReturning<T, CancelablePromise<R>>,
     K extends keyof M & string,
-    P extends Parameters<M[K]>
+    P extends Parameters<M[K]>,
   >(
     name: K,
     transferrables: Transferable[],
@@ -119,7 +119,7 @@ export default class Actor<T> {
     const value: Promise<R> = new Promise((resolve, reject) => {
       this.postMessage(
         { id: thisId, type: "request", name, args },
-        transferrables
+        transferrables,
       );
       this.callbacks[thisId] = (error, result, timings) => {
         timer?.addAll(timings);

@@ -178,7 +178,7 @@ export default function generateIsolines(
   interval: number,
   tile: HeightTile,
   extent: number = 4096,
-  buffer: number = 1
+  buffer: number = 1,
 ): { [ele: number]: number[][] } {
   if (!interval) {
     return {};
@@ -193,13 +193,13 @@ export default function generateIsolines(
   function interpolate(
     point: [number, number],
     threshold: number,
-    accept: (x: number, y: number) => void
+    accept: (x: number, y: number) => void,
   ) {
     if (point[0] === 0) {
       // left
       accept(
         multiplier * (c - 1),
-        multiplier * (r - ratio(bld, threshold, tld))
+        multiplier * (r - ratio(bld, threshold, tld)),
       );
     } else if (point[0] === 2) {
       // right
@@ -208,7 +208,7 @@ export default function generateIsolines(
       // top
       accept(
         multiplier * (c - ratio(trd, threshold, tld)),
-        multiplier * (r - 1)
+        multiplier * (r - 1),
       );
     } else {
       // bottom
@@ -252,7 +252,7 @@ export default function generateIsolines(
           if (!fragmentByStart)
             fragmentByStartByLevel.set(
               threshold,
-              (fragmentByStart = new Map())
+              (fragmentByStart = new Map()),
             );
           let fragmentByEnd = fragmentByEndByLevel.get(threshold);
           if (!fragmentByEnd)

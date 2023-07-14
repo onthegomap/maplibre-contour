@@ -42,14 +42,14 @@ afterEach(() => {
 test("parse known ContourTileOptions", () => {
   expect(
     decodeOptions(
-      "buffer=1&contourLayer=contour%20layer&elevationKey=elevation%20key&extent=123&levelKey=level%20key&multiplier=123&overzoom=3&thresholds=10*500~11*100*1000"
-    )
+      "buffer=1&contourLayer=contour%20layer&elevationKey=elevation%20key&extent=123&levelKey=level%20key&multiplier=123&overzoom=3&thresholds=10*500~11*100*1000",
+    ),
   ).toEqual(fullGlobalOptionsOut);
 });
 
 test("round-trip ContourTileOptions", () => {
   expect(
-    decodeOptions(`example.com?${encodeOptions(fullGlobalOptions)}`)
+    decodeOptions(`example.com?${encodeOptions(fullGlobalOptions)}`),
   ).toEqual(fullGlobalOptionsOut);
 });
 

@@ -6,7 +6,7 @@ test("empty tile", () => {
   expect(
     encodeVectorTile({
       layers: {},
-    }).length
+    }).length,
   ).toBe(0);
 });
 

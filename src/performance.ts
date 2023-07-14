@@ -10,8 +10,8 @@ export function getResourceTiming(url: string): PerformanceResourceTiming[] {
     JSON.stringify(
       (perf?.getEntriesByName?.(url) as
         | PerformanceResourceTiming[]
-        | undefined) || []
-    )
+        | undefined) || [],
+    ),
   );
 }
 export function now(): number {
@@ -92,11 +92,11 @@ export class Timer {
       const key = category as TimingCategory;
       const ourList = this.marks[key] || (this.marks[key] = []);
       ourList.push(
-        ...(timings.marks[key]?.map((ns) => ns.map((n) => n + offset)) || [])
+        ...(timings.marks[key]?.map((ns) => ns.map((n) => n + offset)) || []),
       );
     }
     this.resources.push(
-      ...timings.resources.map((rt) => applyOffset(rt, offset))
+      ...timings.resources.map((rt) => applyOffset(rt, offset)),
     );
   };
 }
