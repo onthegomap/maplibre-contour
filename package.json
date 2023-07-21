@@ -60,6 +60,6 @@
     "rollup": "3.26.3",
     "ts-jest": "29.1.1",
     "typescript": "5.1.6",
-    "whatwg-fetch": "3.6.2"
+    "whatwg-fetch": "3.6.17"
   }
 }
