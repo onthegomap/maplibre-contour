@@ -56,7 +56,7 @@
     "npm-run-all": "4.1.5",
     "pbf": "3.2.1",
     "pngjs": "7.0.0",
-    "prettier": "3.0.2",
+    "prettier": "3.0.3",
     "rollup": "3.28.1",
     "ts-jest": "29.1.1",
     "typescript": "5.2.2",
