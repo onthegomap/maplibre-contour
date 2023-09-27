@@ -57,7 +57,7 @@
     "pbf": "3.2.1",
     "pngjs": "7.0.0",
     "prettier": "3.0.3",
-    "rollup": "3.28.1",
+    "rollup": "3.29.3",
     "ts-jest": "29.1.1",
     "typescript": "5.2.2",
     "whatwg-fetch": "3.6.17"
