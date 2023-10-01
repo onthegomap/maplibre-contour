@@ -32,11 +32,11 @@ type ResponseCallback = (
   error?: Error | undefined,
   data?: any | undefined,
   cacheControl?: string | undefined,
-  expires?: string | undefined
+  expires?: string | undefined,
 ) => void;
 type Protocol = (
   request: RequestParameters,
-  response: ResponseCallback
+  response: ResponseCallback,
 ) => Cancelable;
 
 const used = new Set<string>();
@@ -93,7 +93,7 @@ export class DemSource {
       encoding,
       maxzoom,
       timeoutMs,
-      actor
+      actor,
     );
   }
 
@@ -128,7 +128,7 @@ export class DemSource {
    */
   sharedDemProtocol = (
     request: RequestParameters,
-    response: ResponseCallback
+    response: ResponseCallback,
   ): Cancelable => {
     const [z, x, y] = this.parseUrl(request.url);
     const timer = new Timer("main");
@@ -164,7 +164,7 @@ export class DemSource {
    */
   contourProtocol = (
     request: RequestParameters,
-    response: ResponseCallback
+    response: ResponseCallback,
   ): Cancelable => {
     const timer = new Timer("main");
     const [z, x, y] = this.parseUrl(request.url);
@@ -174,7 +174,7 @@ export class DemSource {
       x,
       y,
       getOptionsForZoom(options, z),
-      timer
+      timer,
     );
     let canceled = false;
     (async () => {
