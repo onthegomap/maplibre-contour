@@ -1,13 +1,8 @@
 name: Dependabot auto-merge
 on:
   workflow_run:
-    workflows: ["Node.js CI"]
-    types:
-      - completed
-
-permissions:
-  contents: write
-  pull-requests: write
+    workflows: [CI]
+    types: [completed]
 
 jobs:
   dependabot:
