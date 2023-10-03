@@ -3,8 +3,17 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
+    branches: ["dependabot/**"]
+
+permissions:
+  pull-requests: write
+  contents: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: "echo test"
   dependabot:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.actor == 'dependabot[bot]' }}
