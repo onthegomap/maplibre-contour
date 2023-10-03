@@ -3,23 +3,18 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: ["dependabot/**"]
 
 permissions:
   pull-requests: write
   contents: write
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - run: "echo test"
   dependabot:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.actor == 'dependabot[bot]' }}
     steps:
       - name: Auto-merge dependabot pull request
-        run: gh pr merge --repo ${GITHUB_REPOSITORY} --auto --squash "${PR_URL}"
+        run: gh pr merge --auto --squash "${PR_URL}"
         env:
-          PR_URL: ${{github.event.pull_request.html_url}}
+          PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
