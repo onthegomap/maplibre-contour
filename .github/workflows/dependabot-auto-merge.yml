@@ -11,7 +11,7 @@ permissions:
 jobs:
   dependabot:
     runs-on: ubuntu-latest
-    if: ${{ github.action.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' && github.actor == 'dependabot[bot]' }}
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' && github.actor == 'dependabot[bot]' }}
     steps:
       - name: Auto-merge dependabot pull request
         run: gh pr merge --auto --squash "${PR_URL}" --repo ${{ github.repository }}
