@@ -19,7 +19,7 @@ function encodeThresholds(thresholds: {
 }): string {
   return sortedEntries(thresholds)
     .map(([key, value]) =>
-      [key, ...(typeof value === "number" ? [value] : value)].join("*"),
+      [key, ...(typeof value === "number" ? [value] : value)].join("*")
     )
     .join("~");
 }
@@ -31,7 +31,7 @@ function decodeThresholds(thresholds: string): {
     thresholds
       .split("~")
       .map((part) => part.split("*").map(Number))
-      .map(([key, ...values]) => [key, values]),
+      .map(([key, ...values]) => [key, values])
   );
 }
 
@@ -42,7 +42,7 @@ export function encodeOptions({
   return sortedEntries({ thresholds: encodeThresholds(thresholds), ...rest })
     .map(
       ([key, value]) =>
-        `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+        `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
     )
     .join("&");
 }
@@ -67,12 +67,12 @@ export function decodeOptions(options: string): GlobalContourTileOptions {
             v = Number(v);
         }
         return [k, v];
-      }),
+      })
   ) as any as GlobalContourTileOptions;
 }
 
 export function encodeIndividualOptions(
-  options: IndividualContourTileOptions,
+  options: IndividualContourTileOptions
 ): string {
   return sortedEntries(options)
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
@@ -81,7 +81,7 @@ export function encodeIndividualOptions(
 
 export function getOptionsForZoom(
   options: GlobalContourTileOptions,
-  zoom: number,
+  zoom: number
 ): IndividualContourTileOptions {
   const { thresholds, ...rest } = options;
 
@@ -104,7 +104,7 @@ export function getOptionsForZoom(
 
 export function map<T, U>(
   { cancel, value }: CancelablePromise<T>,
-  mapper: (t: T) => U,
+  mapper: (t: T) => U
 ) {
   return { cancel, value: value.then(mapper) };
 }
@@ -117,7 +117,7 @@ export function copy(src: ArrayBuffer): ArrayBuffer {
 
 export function prepareDemTile(
   promise: CancelablePromise<DemTile>,
-  copy: boolean,
+  copy: boolean
 ): CancelablePromise<TransferrableDemTile> {
   return map(promise, ({ data, ...rest }) => {
     let newData = data;
@@ -130,7 +130,7 @@ export function prepareDemTile(
 }
 
 export function prepareContourTile(
-  promise: CancelablePromise<ContourTile>,
+  promise: CancelablePromise<ContourTile>
 ): CancelablePromise<TransferrableContourTile> {
   return map(promise, ({ arrayBuffer }) => {
     const clone = copy(arrayBuffer);
@@ -159,10 +159,7 @@ let useVideoFrame: boolean | null = null;
 export function shouldUseVideoFrame(): boolean {
   if (useVideoFrame == null) {
     useVideoFrame = false;
-    if (
-      typeof VideoFrame !== "undefined" &&
-      typeof createImageBitmap == "function"
-    ) {
+    if (offscreenCanvasSupported() && typeof VideoFrame !== "undefined") {
       const canvas = new OffscreenCanvas(2, 2);
       const context = canvas.getContext("2d");
       if (context) {
@@ -183,7 +180,7 @@ export function shouldUseVideoFrame(): boolean {
 
 export function withTimeout<T>(
   timeoutMs: number,
-  { value, cancel }: CancelablePromise<T>,
+  { value, cancel }: CancelablePromise<T>
 ): CancelablePromise<T> {
   let reject: (error: Error) => void = () => {};
   const timeout = setTimeout(() => {
