@@ -159,16 +159,26 @@ let useVideoFrame: boolean | null = null;
 export function shouldUseVideoFrame(): boolean {
   if (useVideoFrame == null) {
     useVideoFrame = false;
+    // if webcodec is supported, AND if the browser mangles getImageData results
+    // (ie. safari with increased privacy protections) then use webcodec VideoFrame API
     if (offscreenCanvasSupported() && typeof VideoFrame !== "undefined") {
-      const canvas = new OffscreenCanvas(2, 2);
+      const canvas = new OffscreenCanvas(10, 10);
       const context = canvas.getContext("2d");
       if (context) {
-        context.fillStyle = "white";
-        context.fillRect(0, 0, 2, 2);
-        const data = context.getImageData(0, 0, 2, 2).data;
-        for (let i = 0; i < data.length; i++) {
-          if (data[i] !== 255) {
+        const size = 10;
+        for (let x = 0; x < size; x++) {
+          for (let y = 0; y < size; y++) {
+            context.fillStyle = `rgb(${x},${y},${x + y})`;
+            context.fillRect(x, y, 1, 1);
+          }
+        }
+        const data = context.getImageData(0, 0, size, size).data;
+        for (let i = 0; i < data.length; i += 4) {
+          const x = (i / 4) % size;
+          const y = Math.floor(i / 4 / size);
+          if (data[i] !== x || data[i + 1] !== y || data[i + 2] !== x + y) {
             useVideoFrame = true;
+            break;
           }
         }
       }
