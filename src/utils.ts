@@ -154,6 +154,33 @@ export function offscreenCanvasSupported(): boolean {
   return supportsOffscreenCanvas || false;
 }
 
+let useVideoFrame: boolean | null = null;
+
+export function shouldUseVideoFrame(): boolean {
+  if (useVideoFrame == null) {
+    useVideoFrame = false;
+    if (
+      typeof VideoFrame !== "undefined" &&
+      typeof createImageBitmap == "function"
+    ) {
+      const canvas = new OffscreenCanvas(2, 2);
+      const context = canvas.getContext("2d");
+      if (context) {
+        context.fillStyle = "white";
+        context.fillRect(0, 0, 2, 2);
+        const data = context.getImageData(0, 0, 2, 2).data;
+        for (let i = 0; i < data.length; i++) {
+          if (data[i] !== 255) {
+            useVideoFrame = true;
+          }
+        }
+      }
+    }
+  }
+
+  return useVideoFrame || false;
+}
+
 export function withTimeout<T>(
   timeoutMs: number,
   { value, cancel }: CancelablePromise<T>,

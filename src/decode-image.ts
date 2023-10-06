@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-globals */
 import type Actor from "./actor";
-import { offscreenCanvasSupported } from "./utils";
+import { offscreenCanvasSupported, shouldUseVideoFrame } from "./utils";
 import type { MainThreadDispatch } from "./remote-dem-manager";
 import { CancelablePromise, DemTile, Encoding } from "./types";
 
@@ -10,8 +10,7 @@ let canvas: HTMLCanvasElement;
 let canvasContext: CanvasRenderingContext2D | null;
 
 /**
- * Parses a `raster-dem` image into a DemTile using OffscreenCanvas and createImageBitmap
- * only supported on newer browsers.
+ * Parses a `raster-dem` image into a DemTile using Webcoded VideoFrame API.
  */
 function decodeImageModern(
   blob: Blob,
@@ -28,6 +27,51 @@ function decodeImageModern(
     }
 
     return getElevations(img, encoding, offscreenCanvas, offscreenContext);
+  });
+  return {
+    value: promise,
+    cancel: () => {
+      canceled = true;
+    },
+  };
+}
+
+/**
+ * Parses a `raster-dem` image into a DemTile using OffscreenCanvas and createImageBitmap
+ * only supported on newer browsers.
+ */
+function decodeImageVideoFrame(
+  blob: Blob,
+  encoding: Encoding,
+): CancelablePromise<DemTile> {
+  let canceled = false;
+  const promise = createImageBitmap(blob).then((img) => {
+    if (canceled) return null as any as DemTile;
+
+    const vf = new VideoFrame(img, { timestamp: 0 });
+    try {
+      // formats we can handle: BGRX, BGRA, RGBA, RGBX
+      const valid =
+        vf?.format?.startsWith("BGR") || vf?.format?.startsWith("RGB");
+      if (valid) {
+        const swapBR = vf?.format?.startsWith("BGR");
+        const size = vf.allocationSize();
+        const data = new Uint8ClampedArray(size);
+        vf.copyTo(data);
+        if (swapBR) {
+          for (let i = 0; i < data.length; i += 4) {
+            const tmp = data[i];
+            data[i] = data[i + 2];
+            data[i + 2] = tmp;
+          }
+        }
+        return decodeParsedImage(img.width, img.height, encoding, data);
+      } else {
+        throw new Error(`Unrecognized format: ${vf?.format}`);
+      }
+    } finally {
+      vf.close();
+    }
   });
   return {
     value: promise,
@@ -103,7 +147,9 @@ function isWorker(): boolean {
 const defaultDecoder: (
   blob: Blob,
   encoding: Encoding,
-) => CancelablePromise<DemTile> = offscreenCanvasSupported()
+) => CancelablePromise<DemTile> = shouldUseVideoFrame()
+  ? decodeImageVideoFrame
+  : offscreenCanvasSupported()
   ? decodeImageModern
   : isWorker()
   ? decodeImageOnMainThread
