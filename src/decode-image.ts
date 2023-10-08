@@ -19,14 +19,7 @@ function decodeImageModern(
   let canceled = false;
   const promise = createImageBitmap(blob).then((img) => {
     if (canceled) return null as any as DemTile;
-    if (!offscreenCanvas) {
-      offscreenCanvas = new OffscreenCanvas(img.width, img.height);
-      offscreenContext = offscreenCanvas.getContext("2d", {
-        willReadFrequently: true,
-      }) as OffscreenCanvasRenderingContext2D;
-    }
-
-    return getElevations(img, encoding, offscreenCanvas, offscreenContext);
+    return decodeImageUsingOffscreenCanvas(img, encoding);
   });
   return {
     value: promise,
@@ -34,6 +27,20 @@ function decodeImageModern(
       canceled = true;
     },
   };
+}
+
+function decodeImageUsingOffscreenCanvas(
+  img: ImageBitmap,
+  encoding: Encoding,
+): DemTile {
+  if (!offscreenCanvas) {
+    offscreenCanvas = new OffscreenCanvas(img.width, img.height);
+    offscreenContext = offscreenCanvas.getContext("2d", {
+      willReadFrequently: true,
+    }) as OffscreenCanvasRenderingContext2D;
+  }
+
+  return getElevations(img, encoding, offscreenCanvas, offscreenContext);
 }
 
 /**
@@ -45,7 +52,7 @@ function decodeImageVideoFrame(
   encoding: Encoding,
 ): CancelablePromise<DemTile> {
   let canceled = false;
-  const promise = createImageBitmap(blob).then((img) => {
+  const promise = createImageBitmap(blob).then(async (img) => {
     if (canceled) return null as any as DemTile;
 
     const vf = new VideoFrame(img, { timestamp: 0 });
@@ -53,22 +60,24 @@ function decodeImageVideoFrame(
       // formats we can handle: BGRX, BGRA, RGBA, RGBX
       const valid =
         vf?.format?.startsWith("BGR") || vf?.format?.startsWith("RGB");
-      if (valid) {
-        const swapBR = vf?.format?.startsWith("BGR");
-        const size = vf.allocationSize();
-        const data = new Uint8ClampedArray(size);
-        vf.copyTo(data);
-        if (swapBR) {
-          for (let i = 0; i < data.length; i += 4) {
-            const tmp = data[i];
-            data[i] = data[i + 2];
-            data[i + 2] = tmp;
-          }
-        }
-        return decodeParsedImage(img.width, img.height, encoding, data);
-      } else {
+      if (!valid) {
         throw new Error(`Unrecognized format: ${vf?.format}`);
       }
+      const swapBR = vf?.format?.startsWith("BGR");
+      const size = vf.allocationSize();
+      const data = new Uint8ClampedArray(size);
+      await vf.copyTo(data);
+      if (swapBR) {
+        for (let i = 0; i < data.length; i += 4) {
+          const tmp = data[i];
+          data[i] = data[i + 2];
+          data[i + 2] = tmp;
+        }
+      }
+      return decodeParsedImage(img.width, img.height, encoding, data);
+    } catch (e) {
+      // fall back to offscreen canvas
+      return decodeImageUsingOffscreenCanvas(img, encoding);
     } finally {
       vf.close();
     }
