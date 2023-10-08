@@ -14,7 +14,7 @@ jobs:
     if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' && github.actor == 'dependabot[bot]' }}
     steps:
       - name: Auto-merge dependabot pull request
-        run: gh pr merge --auto --squash "${PR_URL}" --repo ${{ github.repository }}
+        run: gh pr merge --auto --squash "${PR_BRANCH}" --repo ${{ github.repository }}
         env:
-          PR_URL: ${{github.event.workflow_run.head_branch}}
+          PR_BRANCH: ${{github.event.workflow_run.head_branch}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
