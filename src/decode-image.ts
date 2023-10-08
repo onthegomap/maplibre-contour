@@ -76,6 +76,7 @@ function decodeImageVideoFrame(
       }
       return decodeParsedImage(img.width, img.height, encoding, data);
     } catch (e) {
+      if (canceled) return null as any as DemTile;
       // fall back to offscreen canvas
       return decodeImageUsingOffscreenCanvas(img, encoding);
     } finally {
