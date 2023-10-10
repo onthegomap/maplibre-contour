@@ -7,8 +7,11 @@ import {
   encodeIndividualOptions,
   encodeOptions,
   getOptionsForZoom,
+  offscreenCanvasSupported,
+  shouldUseVideoFrame,
   withTimeout,
 } from "./utils";
+import { Canvas } from "canvas";
 
 const fullGlobalOptions: GlobalContourTileOptions = {
   thresholds: {
@@ -153,4 +156,16 @@ test("withTimeout - cancel cancels timer", async () => {
   expect(cancel).toBeCalledTimes(1);
   jest.advanceTimersByTime(10_000);
   expect(cancel).toBeCalledTimes(1);
+});
+
+test("should use video frame", async () => {
+  const OffscreenCanvas = ((window as any).OffscreenCanvas = jest.fn(
+    (width: number, height: number) => new Canvas(width, height),
+  ));
+  (window as any).createImageBitmap = () => Promise.resolve();
+  (window as any).VideoFrame = {};
+  expect(offscreenCanvasSupported()).toBeTruthy();
+  OffscreenCanvas.mockClear();
+  expect(shouldUseVideoFrame()).toBeFalsy();
+  expect(window.OffscreenCanvas).toHaveBeenCalledTimes(1);
 });

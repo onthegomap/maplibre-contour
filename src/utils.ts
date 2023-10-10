@@ -154,6 +154,37 @@ export function offscreenCanvasSupported(): boolean {
   return supportsOffscreenCanvas || false;
 }
 
+let useVideoFrame: boolean | null = null;
+
+export function shouldUseVideoFrame(): boolean {
+  if (useVideoFrame == null) {
+    useVideoFrame = false;
+    // if webcodec is supported, AND if the browser mangles getImageData results
+    // (ie. safari with increased privacy protections) then use webcodec VideoFrame API
+    if (offscreenCanvasSupported() && typeof VideoFrame !== "undefined") {
+      const size = 5;
+      const canvas = new OffscreenCanvas(5, 5);
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (context) {
+        for (let i = 0; i < size * size; i++) {
+          const base = i * 4;
+          context.fillStyle = `rgb(${base},${base + 1},${base + 2})`;
+          context.fillRect(i % size, Math.floor(i / size), 1, 1);
+        }
+        const data = context.getImageData(0, 0, size, size).data;
+        for (let i = 0; i < size * size * 4; i++) {
+          if (i % 4 !== 3 && data[i] !== i) {
+            useVideoFrame = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return useVideoFrame || false;
+}
+
 export function withTimeout<T>(
   timeoutMs: number,
   { value, cancel }: CancelablePromise<T>,
