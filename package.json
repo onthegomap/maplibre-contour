@@ -1,6 +1,6 @@
 {
   "name": "maplibre-contour",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Render contour lines from raster elevation tiles in maplibre-gl-js",
   "browser": "dist/index.min.js",
   "unpkg": "dist/index.min.js",
