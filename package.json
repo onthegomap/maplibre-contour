@@ -48,7 +48,7 @@
     "@typescript-eslint/eslint-plugin": "6.9.0",
     "benchmark": "2.1.4",
     "canvas": "2.11.2",
-    "eslint": "8.51.0",
+    "eslint": "8.52.0",
     "eslint-config-mourner": "3.0.0",
     "eslint-config-prettier": "9.0.0",
     "jest": "29.7.0",
