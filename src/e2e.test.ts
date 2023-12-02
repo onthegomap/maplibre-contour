@@ -81,20 +81,17 @@ test("e2e fetch tile and shared DEM protocol share cache", async () => {
 
   const timings: Timing[] = [];
   source.onTiming((timing) => timings.push(timing));
-  const fetched = await new Promise((resolve, reject) => {
-    source.sharedDemProtocol(
+  const fetched = (
+    await source.sharedDemProtocol(
       {
         url: source.sharedDemProtocolUrl
           .replace("{z}", "1")
           .replace("{x}", "2")
           .replace("{y}", "3"),
       },
-      (err, data) => {
-        if (err) reject(err);
-        else resolve(data);
-      },
-    );
-  });
+      new AbortController(),
+    )
+  ).data;
 
   expect(fetched).toEqual(Uint8Array.from([1, 2]).buffer);
 
@@ -129,8 +126,8 @@ test("e2e contour tile", async () => {
   });
   const timings: Timing[] = [];
   source.onTiming((timing) => timings.push(timing));
-  const contourTile: ArrayBuffer = await new Promise((resolve, reject) => {
-    source.contourProtocol(
+  const contourTile: ArrayBuffer = (
+    await source.contourProtocol(
       {
         url: source
           .contourProtocolUrl({
@@ -147,12 +144,9 @@ test("e2e contour tile", async () => {
           .replace("{x}", "20")
           .replace("{y}", "30"),
       },
-      (err, data) => {
-        if (err) reject(err);
-        else resolve(data);
-      },
-    );
-  });
+      new AbortController(),
+    )
+  ).data;
 
   const tile = new VectorTile(new Pbf(contourTile));
 
@@ -227,26 +221,21 @@ test("e2e contour tile", async () => {
       startTime: performance.now(),
     } as PerformanceResourceTiming,
   ];
-  await new Promise((resolve, reject) => {
-    source.contourProtocol(
-      {
-        url: source
-          .contourProtocolUrl({
-            thresholds: {
-              10: 10,
-            },
-            overzoom: 0,
-          })
-          .replace("{z}", "10")
-          .replace("{x}", "21")
-          .replace("{y}", "30"),
-      },
-      (err, data) => {
-        if (err) reject(err);
-        else resolve(data);
-      },
-    );
-  });
+  await source.contourProtocol(
+    {
+      url: source
+        .contourProtocolUrl({
+          thresholds: {
+            10: 10,
+          },
+          overzoom: 0,
+        })
+        .replace("{z}", "10")
+        .replace("{x}", "21")
+        .replace("{y}", "30"),
+    },
+    new AbortController(),
+  );
   expect(timings[1]).toMatchObject({
     tilesUsed: 9,
     process: 0,

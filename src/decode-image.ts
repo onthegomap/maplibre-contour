@@ -160,10 +160,10 @@ const defaultDecoder: (
 ) => CancelablePromise<DemTile> = shouldUseVideoFrame()
   ? decodeImageVideoFrame
   : offscreenCanvasSupported()
-  ? decodeImageModern
-  : isWorker()
-  ? decodeImageOnMainThread
-  : decodeImageOld;
+    ? decodeImageModern
+    : isWorker()
+      ? decodeImageOnMainThread
+      : decodeImageOld;
 
 export default defaultDecoder;
 

@@ -130,7 +130,7 @@ export class DemSource {
   sharedDemProtocol: AddProtocolAction = async (
     request: RequestParameters,
     abortController: AbortController,
-  ): Promise<GetResourceResponse<any>> => {
+  ): Promise<GetResourceResponse<ArrayBuffer>> => {
     const [z, x, y] = this.parseUrl(request.url);
     const timer = new Timer("main");
     const result = this.manager.fetchTile(z, x, y, timer);
@@ -163,7 +163,7 @@ export class DemSource {
   contourProtocol: AddProtocolAction = async (
     request: RequestParameters,
     abortController: AbortController,
-  ): Promise<GetResourceResponse<any>> => {
+  ): Promise<GetResourceResponse<ArrayBuffer>> => {
     const timer = new Timer("main");
     const [z, x, y] = this.parseUrl(request.url);
     const options = decodeOptions(request.url);
