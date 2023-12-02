@@ -10,6 +10,7 @@
   "scripts": {
     "bench": "npm run build && node benchmark.js",
     "build": "rm -rf dist && rollup -c && npm run generate-types && tsc --project tsconfig.dist.json",
+    "test-build": "cd test-project && npm ci && npm test",
     "generate-types": "tsc --emitDeclarationOnly --declaration --outDir dist && rm -rf dist/*{.t,-j}est.d.ts",
     "jest": "jest",
     "jest:watch": "jest --watch",
