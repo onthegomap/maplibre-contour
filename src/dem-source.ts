@@ -131,6 +131,11 @@ export class DemSource {
     request: RequestParameters,
     abortController: AbortController,
   ) => {
+    if (!(abortController instanceof AbortController)) {
+      throw new Error(
+        "This version of maplibre-contour is only compatible with maplibre v4+",
+      );
+    }
     const [z, x, y] = this.parseUrl(request.url);
     const timer = new Timer("main");
     const result = this.manager.fetchTile(z, x, y, timer);
@@ -164,6 +169,11 @@ export class DemSource {
     request: RequestParameters,
     abortController: AbortController,
   ) => {
+    if (!(abortController instanceof AbortController)) {
+      throw new Error(
+        "This version of maplibre-contour is only compatible with maplibre v4+",
+      );
+    }
     const timer = new Timer("main");
     const [z, x, y] = this.parseUrl(request.url);
     const options = decodeOptions(request.url);
