@@ -1,27 +1,20 @@
 name: Dependabot auto-merge
 on:
   workflow_run:
-    workflows: ["Node.js CI"]
-    types:
-      - completed
+    workflows: [CI]
+    types: [completed]
 
 permissions:
-  contents: write
   pull-requests: write
+  contents: write
 
 jobs:
   dependabot:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.event == 'pull_request' && github.actor == 'dependabot[bot]' && github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' && github.actor == 'dependabot[bot]' }}
     steps:
-      - name: Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@v1
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-      - name: Enable auto-merge for Dependabot PRs
-        if: ${{steps.metadata.outputs.update-type != 'version-update:semver-major'}}
-        run: gh pr merge --auto --squash "$PR_URL"
+      - name: Auto-merge dependabot pull request
+        run: gh pr merge --auto --squash "${PR_BRANCH}" --repo ${{ github.repository }}
         env:
-          PR_URL: ${{github.event.pull_request.html_url}}
+          PR_BRANCH: ${{github.event.workflow_run.head_branch}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
