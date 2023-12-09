@@ -61,10 +61,8 @@ const v3compat =
   (v4: AddProtocolAction): V3OfV4Protocol =>
   (requestParameters, arg2) => {
     if (arg2 instanceof AbortController) {
-      console.log("v4", requestParameters, arg2);
       return v4(requestParameters, arg2) as any;
     } else {
-      console.log("v3", requestParameters, arg2);
       const abortController = new AbortController();
       v4(requestParameters, abortController).then(
         (result) =>
@@ -182,14 +180,12 @@ export class DemSource {
       const data = await result.value;
       timing = timer.finish(request.url);
       const arrayBuffer: ArrayBuffer = await data.data.arrayBuffer();
-      console.log("done!", arrayBuffer);
       return {
         data: arrayBuffer,
         cacheControl: data.cacheControl,
         expires: data.expires,
       };
     } catch (error) {
-      console.log("err!", error);
       timing = timer.error(request.url);
       throw error;
     } finally {
@@ -205,7 +201,6 @@ export class DemSource {
     request: RequestParameters,
     abortController: AbortController,
   ) => {
-    console.log("countour");
     const timer = new Timer("main");
     const [z, x, y] = this.parseUrl(request.url);
     const options = decodeOptions(request.url);
