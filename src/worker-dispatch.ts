@@ -1,7 +1,6 @@
 import { LocalDemManager } from "./dem-manager";
 import { Timer } from "./performance";
 import {
-  CancelablePromise,
   ContourTile,
   FetchResponse,
   IndividualContourTileOptions,
@@ -10,10 +9,8 @@ import {
 } from "./types";
 import { prepareContourTile, prepareDemTile } from "./utils";
 
-const noManager = (managerId: number): CancelablePromise<any> => ({
-  cancel() {},
-  value: Promise.reject(new Error(`No manager registered for ${managerId}`)),
-});
+const noManager = (managerId: number): Promise<any> =>
+  Promise.reject(new Error(`No manager registered for ${managerId}`));
 
 /**
  * Receives messages from an actor in the web worker.
@@ -22,7 +19,8 @@ export default class WorkerDispatch {
   /** There is one worker shared between all managers in the main thread using the plugin, so need to store each of their configurations. */
   managers: { [id: number]: LocalDemManager } = {};
 
-  init = (message: InitMessage): CancelablePromise<void> => {
+  // eslint-disable-next-line no-unused-vars
+  init = (message: InitMessage, _: AbortController): Promise<void> => {
     this.managers[message.managerId] = new LocalDemManager(
       message.demUrlPattern,
       message.cacheSize,
@@ -30,7 +28,7 @@ export default class WorkerDispatch {
       message.maxzoom,
       message.timeoutMs,
     );
-    return { cancel() {}, value: Promise.resolve() };
+    return Promise.resolve();
   };
 
   fetchTile = (
@@ -38,20 +36,28 @@ export default class WorkerDispatch {
     z: number,
     x: number,
     y: number,
+    abortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<FetchResponse> =>
-    this.managers[managerId]?.fetchTile(z, x, y, timer) || noManager(managerId);
+  ): Promise<FetchResponse> =>
+    this.managers[managerId]?.fetchTile(z, x, y, abortController, timer) ||
+    noManager(managerId);
 
   fetchAndParseTile = (
     managerId: number,
     z: number,
     x: number,
     y: number,
+    abortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<TransferrableDemTile> =>
+  ): Promise<TransferrableDemTile> =>
     prepareDemTile(
-      this.managers[managerId]?.fetchAndParseTile(z, x, y, timer) ||
-        noManager(managerId),
+      this.managers[managerId]?.fetchAndParseTile(
+        z,
+        x,
+        y,
+        abortController,
+        timer,
+      ) || noManager(managerId),
       true,
     );
 
@@ -61,10 +67,17 @@ export default class WorkerDispatch {
     x: number,
     y: number,
     options: IndividualContourTileOptions,
+    abortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<ContourTile> =>
+  ): Promise<ContourTile> =>
     prepareContourTile(
-      this.managers[managerId]?.fetchContourTile(z, x, y, options, timer) ||
-        noManager(managerId),
+      this.managers[managerId]?.fetchContourTile(
+        z,
+        x,
+        y,
+        options,
+        abortController,
+        timer,
+      ) || noManager(managerId),
     );
 }

@@ -3,7 +3,7 @@ import Actor from "./actor";
 import WorkerDispatch from "./worker-dispatch";
 import { DemSource } from "./dem-source";
 import { MainThreadDispatch } from "./remote-dem-manager";
-import { CancelablePromise, DemTile, Timing } from "./types";
+import { DemTile, Timing } from "./types";
 import { VectorTile } from "@mapbox/vector-tile";
 import Pbf from "pbf";
 
@@ -14,7 +14,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-jest.mock("./decode-image", () => (): CancelablePromise<DemTile> => {
+jest.mock("./decode-image", () => (): Promise<DemTile> => {
   jest.advanceTimersByTime(1);
   // eslint-disable-next-line global-require
   const flattenDeep = require("lodash/flattenDeep");
@@ -30,7 +30,7 @@ jest.mock("./decode-image", () => (): CancelablePromise<DemTile> => {
     width: 4,
     height: 4,
   };
-  return { value: Promise.resolve(value), cancel() {} };
+  return Promise.resolve(value);
 });
 
 const remote = new WorkerDispatch();
@@ -271,10 +271,11 @@ test("decode image from worker", async () => {
   const result = await workerActor.send(
     "decodeImage",
     [],
+    new AbortController(),
     undefined,
     new Blob([], { type: "image/png" }),
     "terrarium",
-  ).value;
+  );
   expect(result).toMatchObject({
     width: 4,
     height: 4,

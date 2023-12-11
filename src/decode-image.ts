@@ -1,8 +1,13 @@
 /* eslint-disable no-restricted-globals */
 import type Actor from "./actor";
-import { offscreenCanvasSupported, shouldUseVideoFrame } from "./utils";
+import {
+  isAborted,
+  offscreenCanvasSupported,
+  onAbort,
+  shouldUseVideoFrame,
+} from "./utils";
 import type { MainThreadDispatch } from "./remote-dem-manager";
-import { CancelablePromise, DemTile, Encoding } from "./types";
+import { DemTile, Encoding } from "./types";
 
 let offscreenCanvas: OffscreenCanvas;
 let offscreenContext: OffscreenCanvasRenderingContext2D | null;
@@ -12,21 +17,14 @@ let canvasContext: CanvasRenderingContext2D | null;
 /**
  * Parses a `raster-dem` image into a DemTile using Webcoded VideoFrame API.
  */
-function decodeImageModern(
+async function decodeImageModern(
   blob: Blob,
   encoding: Encoding,
-): CancelablePromise<DemTile> {
-  let canceled = false;
-  const promise = createImageBitmap(blob).then((img) => {
-    if (canceled) return null as any as DemTile;
-    return decodeImageUsingOffscreenCanvas(img, encoding);
-  });
-  return {
-    value: promise,
-    cancel: () => {
-      canceled = true;
-    },
-  };
+  abortController: AbortController,
+): Promise<DemTile> {
+  const img = await createImageBitmap(blob);
+  if (isAborted(abortController)) return null as any as DemTile;
+  return decodeImageUsingOffscreenCanvas(img, encoding);
 }
 
 function decodeImageUsingOffscreenCanvas(
@@ -47,84 +45,72 @@ function decodeImageUsingOffscreenCanvas(
  * Parses a `raster-dem` image into a DemTile using webcodec VideoFrame API which works
  * even when browsers disable/degrade the canvas getImageData API as a privacy protection.
  */
-function decodeImageVideoFrame(
+async function decodeImageVideoFrame(
   blob: Blob,
   encoding: Encoding,
-): CancelablePromise<DemTile> {
-  let canceled = false;
-  const promise = createImageBitmap(blob).then(async (img) => {
-    if (canceled) return null as any as DemTile;
+  abortController: AbortController,
+): Promise<DemTile> {
+  const img = await createImageBitmap(blob);
+  if (isAborted(abortController)) return null as any as DemTile;
 
-    const vf = new VideoFrame(img, { timestamp: 0 });
-    try {
-      // formats we can handle: BGRX, BGRA, RGBA, RGBX
-      const valid =
-        vf?.format?.startsWith("BGR") || vf?.format?.startsWith("RGB");
-      if (!valid) {
-        throw new Error(`Unrecognized format: ${vf?.format}`);
-      }
-      const swapBR = vf?.format?.startsWith("BGR");
-      const size = vf.allocationSize();
-      const data = new Uint8ClampedArray(size);
-      await vf.copyTo(data);
-      if (swapBR) {
-        for (let i = 0; i < data.length; i += 4) {
-          const tmp = data[i];
-          data[i] = data[i + 2];
-          data[i + 2] = tmp;
-        }
-      }
-      return decodeParsedImage(img.width, img.height, encoding, data);
-    } catch (e) {
-      if (canceled) return null as any as DemTile;
-      // fall back to offscreen canvas
-      return decodeImageUsingOffscreenCanvas(img, encoding);
-    } finally {
-      vf.close();
+  const vf = new VideoFrame(img, { timestamp: 0 });
+  try {
+    // formats we can handle: BGRX, BGRA, RGBA, RGBX
+    const valid =
+      vf?.format?.startsWith("BGR") || vf?.format?.startsWith("RGB");
+    if (!valid) {
+      throw new Error(`Unrecognized format: ${vf?.format}`);
     }
-  });
-  return {
-    value: promise,
-    cancel: () => {
-      canceled = true;
-    },
-  };
+    const swapBR = vf?.format?.startsWith("BGR");
+    const size = vf.allocationSize();
+    const data = new Uint8ClampedArray(size);
+    await vf.copyTo(data);
+    if (swapBR) {
+      for (let i = 0; i < data.length; i += 4) {
+        const tmp = data[i];
+        data[i] = data[i + 2];
+        data[i + 2] = tmp;
+      }
+    }
+    return decodeParsedImage(img.width, img.height, encoding, data);
+  } catch (e) {
+    if (isAborted(abortController)) return null as any as DemTile;
+    // fall back to offscreen canvas
+    return decodeImageUsingOffscreenCanvas(img, encoding);
+  } finally {
+    vf.close();
+  }
 }
 
 /**
  * Parses a `raster-dem` image into a DemTile using `<img>` element drawn to a `<canvas>`.
  * Only works on the main thread, but works across all browsers.
  */
-function decodeImageOld(
+async function decodeImageOld(
   blob: Blob,
   encoding: Encoding,
-): CancelablePromise<DemTile> {
+  abortController: AbortController,
+): Promise<DemTile> {
   if (!canvas) {
     canvas = document.createElement("canvas");
     canvasContext = canvas.getContext("2d", {
       willReadFrequently: true,
     }) as CanvasRenderingContext2D;
   }
-  let canceled = false;
   const img: HTMLImageElement = new Image();
-  const value = new Promise<HTMLImageElement>((resolve, reject) => {
-    img.onload = () => {
-      if (!canceled) resolve(img);
-      URL.revokeObjectURL(img.src);
-      img.onload = null;
-    };
-    img.onerror = () => reject(new Error("Could not load image."));
-    img.src = blob.size ? URL.createObjectURL(blob) : "";
-  }).then((img: HTMLImageElement) =>
-    getElevations(img, encoding, canvas, canvasContext),
-  );
-  return {
-    value,
-    cancel: () => {
-      canceled = true;
-      img.src = "";
+  onAbort(abortController, () => (img.src = ""));
+  const fetchedImage = await new Promise<HTMLImageElement>(
+    (resolve, reject) => {
+      img.onload = () => {
+        if (!isAborted(abortController)) resolve(img);
+        URL.revokeObjectURL(img.src);
+        img.onload = null;
+      };
+      img.onerror = () => reject(new Error("Could not load image."));
+      img.src = blob.size ? URL.createObjectURL(blob) : "";
     },
-  };
+  );
+  return getElevations(fetchedImage, encoding, canvas, canvasContext);
 }
 
 /**
@@ -134,10 +120,12 @@ function decodeImageOld(
 function decodeImageOnMainThread(
   blob: Blob,
   encoding: Encoding,
-): CancelablePromise<DemTile> {
+  abortController: AbortController,
+): Promise<DemTile> {
   return ((self as any).actor as Actor<MainThreadDispatch>).send(
     "decodeImage",
     [],
+    abortController,
     undefined,
     blob,
     encoding,
@@ -157,7 +145,8 @@ function isWorker(): boolean {
 const defaultDecoder: (
   blob: Blob,
   encoding: Encoding,
-) => CancelablePromise<DemTile> = shouldUseVideoFrame()
+  abortController: AbortController,
+) => Promise<DemTile> = shouldUseVideoFrame()
   ? decodeImageVideoFrame
   : offscreenCanvasSupported()
     ? decodeImageModern

@@ -2,9 +2,8 @@ import AsyncCache from "./cache";
 import decodeImage from "./decode-image";
 import { HeightTile } from "./height-tile";
 import generateIsolines from "./isolines";
-import { encodeIndividualOptions, withTimeout } from "./utils";
+import { encodeIndividualOptions, isAborted, withTimeout } from "./utils";
 import {
-  CancelablePromise,
   ContourTile,
   DemTile,
   Encoding,
@@ -24,21 +23,24 @@ export interface DemManager {
     z: number,
     x: number,
     y: number,
+    abortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<FetchResponse>;
+  ): Promise<FetchResponse>;
   fetchAndParseTile(
     z: number,
     x: number,
     y: number,
+    abortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<DemTile>;
+  ): Promise<DemTile>;
   fetchContourTile(
     z: number,
     x: number,
     y: number,
     options: IndividualContourTileOptions,
+    abortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<ContourTile>;
+  ): Promise<ContourTile>;
 }
 
 /**
@@ -53,8 +55,11 @@ export class LocalDemManager implements DemManager {
   maxzoom: number;
   timeoutMs: number;
   loaded = Promise.resolve();
-  decodeImage: (blob: Blob, encoding: Encoding) => CancelablePromise<DemTile> =
-    decodeImage;
+  decodeImage: (
+    blob: Blob,
+    encoding: Encoding,
+    abortController: AbortController,
+  ) => Promise<DemTile> = decodeImage;
 
   constructor(
     demUrlPattern: string,
@@ -76,47 +81,48 @@ export class LocalDemManager implements DemManager {
     z: number,
     x: number,
     y: number,
+    parentAbortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<FetchResponse> {
+  ): Promise<FetchResponse> {
     const url = this.demUrlPattern
       .replace("{z}", z.toString())
       .replace("{x}", x.toString())
       .replace("{y}", y.toString());
     timer?.useTile(url);
-    return this.tileCache.getCancelable(url, () => {
-      let cancel = () => {};
-      const options: RequestInit = {};
-      try {
-        const controller = new AbortController();
-        options.signal = controller.signal;
-        cancel = () => controller.abort();
-      } catch (e) {
-        // ignore
-      }
-      timer?.fetchTile(url);
-      const mark = timer?.marker("fetch");
-      return withTimeout(this.timeoutMs, {
-        value: fetch(url, options).then(async (response) => {
-          mark?.();
-          if (!response.ok) {
-            throw new Error(`Bad response: ${response.status} for ${url}`);
-          }
-          return {
-            data: await response.blob(),
-            expires: response.headers.get("expires") || undefined,
-            cacheControl: response.headers.get("cache-control") || undefined,
-          };
-        }),
-        cancel,
-      });
-    });
+    return this.tileCache.get(
+      url,
+      (_, childAbortController) => {
+        const options: RequestInit = {
+          signal: childAbortController.signal,
+        };
+        timer?.fetchTile(url);
+        const mark = timer?.marker("fetch");
+        return withTimeout(
+          this.timeoutMs,
+          fetch(url, options).then(async (response) => {
+            mark?.();
+            if (!response.ok) {
+              throw new Error(`Bad response: ${response.status} for ${url}`);
+            }
+            return {
+              data: await response.blob(),
+              expires: response.headers.get("expires") || undefined,
+              cacheControl: response.headers.get("cache-control") || undefined,
+            };
+          }),
+          childAbortController,
+        );
+      },
+      parentAbortController,
+    );
   }
   fetchAndParseTile = (
     z: number,
     x: number,
     y: number,
+    abortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<DemTile> => {
+  ): Promise<DemTile> => {
     const self = this;
     const url = this.demUrlPattern
       .replace("{z}", z.toString())
@@ -125,52 +131,54 @@ export class LocalDemManager implements DemManager {
 
     timer?.useTile(url);
 
-    return this.parsedCache.getCancelable(url, () => {
-      const tile = self.fetchTile(z, x, y, timer);
-      let canceled = false;
-      let alsoCancel = () => {};
-      return {
-        value: tile.value.then(async (response) => {
-          if (canceled) throw new Error("canceled");
-          const result = self.decodeImage(response.data, self.encoding);
-          alsoCancel = result.cancel;
-          const mark = timer?.marker("decode");
-          const value = await result.value;
-          mark?.();
-          return value;
-        }),
-        cancel: () => {
-          canceled = true;
-          alsoCancel();
-          tile.cancel();
-        },
-      };
-    });
+    return this.parsedCache.get(
+      url,
+      async (_, childAbortController) => {
+        const response = await self.fetchTile(
+          z,
+          x,
+          y,
+          childAbortController,
+          timer,
+        );
+        if (isAborted(childAbortController)) throw new Error("canceled");
+        const promise = self.decodeImage(
+          response.data,
+          self.encoding,
+          childAbortController,
+        );
+        const mark = timer?.marker("decode");
+        const result = await promise;
+        mark?.();
+        return result;
+      },
+      abortController,
+    );
   };
 
-  fetchDem(
+  async fetchDem(
     z: number,
     x: number,
     y: number,
     options: IndividualContourTileOptions,
+    abortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<HeightTile> {
+  ): Promise<HeightTile> {
     const zoom = Math.min(z - (options.overzoom || 0), this.maxzoom);
     const subZ = z - zoom;
     const div = 1 << subZ;
     const newX = Math.floor(x / div);
     const newY = Math.floor(y / div);
 
-    const { value, cancel } = this.fetchAndParseTile(zoom, newX, newY, timer);
-    const subX = x % div;
-    const subY = y % div;
+    const tile = await this.fetchAndParseTile(
+      zoom,
+      newX,
+      newY,
+      abortController,
+      timer,
+    );
 
-    return {
-      value: value.then((tile) =>
-        HeightTile.fromRawDem(tile).split(subZ, subX, subY),
-      ),
-      cancel,
-    };
+    return HeightTile.fromRawDem(tile).split(subZ, x % div, y % div);
   }
 
   fetchContourTile(
@@ -178,8 +186,9 @@ export class LocalDemManager implements DemManager {
     x: number,
     y: number,
     options: IndividualContourTileOptions,
+    parentAbortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<ContourTile> {
+  ): Promise<ContourTile> {
     const {
       levels,
       multiplier = 1,
@@ -193,29 +202,33 @@ export class LocalDemManager implements DemManager {
 
     // no levels means less than min zoom with levels specified
     if (!levels || levels.length === 0) {
-      return {
-        cancel() {},
-        value: Promise.resolve({ arrayBuffer: new ArrayBuffer(0) }),
-      };
+      return Promise.resolve({ arrayBuffer: new ArrayBuffer(0) });
     }
     const key = [z, x, y, encodeIndividualOptions(options)].join("/");
-    return this.contourCache.getCancelable(key, () => {
-      const max = 1 << z;
-      let canceled = false;
-      const neighborPromises: (CancelablePromise<HeightTile> | null)[] = [];
-      for (let iy = y - 1; iy <= y + 1; iy++) {
-        for (let ix = x - 1; ix <= x + 1; ix++) {
-          neighborPromises.push(
-            iy < 0 || iy >= max
-              ? null
-              : this.fetchDem(z, (ix + max) % max, iy, options, timer),
-          );
+    return this.contourCache.get(
+      key,
+      (_, childAbortController) => {
+        const max = 1 << z;
+        const neighborPromises: (Promise<HeightTile> | undefined)[] = [];
+        for (let iy = y - 1; iy <= y + 1; iy++) {
+          for (let ix = x - 1; ix <= x + 1; ix++) {
+            neighborPromises.push(
+              iy < 0 || iy >= max
+                ? undefined
+                : this.fetchDem(
+                    z,
+                    (ix + max) % max,
+                    iy,
+                    options,
+                    childAbortController,
+                    timer,
+                  ),
+            );
+          }
         }
-      }
-      const value = Promise.all(neighborPromises.map((n) => n?.value)).then(
-        async (neighbors) => {
+        return Promise.all(neighborPromises).then(async (neighbors) => {
           let virtualTile = HeightTile.combineNeighbors(neighbors);
-          if (!virtualTile || canceled) {
+          if (!virtualTile || isAborted(childAbortController)) {
             return { arrayBuffer: new Uint8Array().buffer };
           }
           const mark = timer?.marker("isoline");
@@ -264,16 +277,9 @@ export class LocalDemManager implements DemManager {
           mark?.();
 
           return { arrayBuffer: result.buffer };
-        },
-      );
-
-      return {
-        value,
-        cancel() {
-          canceled = true;
-          neighborPromises.forEach((n) => n && n.cancel());
-        },
-      };
-    });
+        });
+      },
+      parentAbortController,
+    );
   }
 }

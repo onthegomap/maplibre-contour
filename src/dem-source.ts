@@ -1,7 +1,7 @@
 import { DemManager, LocalDemManager } from "./dem-manager";
 import { decodeOptions, encodeOptions, getOptionsForZoom } from "./utils";
 import RemoteDemManager from "./remote-dem-manager";
-import { Cancelable, DemTile, GlobalContourTileOptions, Timing } from "./types";
+import { DemTile, GlobalContourTileOptions, Timing } from "./types";
 import type WorkerDispatch from "./worker-dispatch";
 import Actor from "./actor";
 import { Timer } from "./performance";
@@ -51,7 +51,7 @@ type V3OfV4Protocol = <
   T extends AbortController | ResponseCallbackV3,
   R = T extends AbortController
     ? Promise<GetResourceResponse<ArrayBuffer>>
-    : Cancelable,
+    : { cancel: () => void },
 >(
   requestParameters: RequestParameters,
   arg2: T,
@@ -141,8 +141,18 @@ export class DemSource {
     this.timingCallbacks.push(callback);
   };
 
-  getDemTile(z: number, x: number, y: number): Promise<DemTile> {
-    return this.manager.fetchAndParseTile(z, x, y).value;
+  getDemTile(
+    z: number,
+    x: number,
+    y: number,
+    abortController?: AbortController,
+  ): Promise<DemTile> {
+    return this.manager.fetchAndParseTile(
+      z,
+      x,
+      y,
+      abortController || new AbortController(),
+    );
   }
 
   /**
@@ -171,13 +181,15 @@ export class DemSource {
   ) => {
     const [z, x, y] = this.parseUrl(request.url);
     const timer = new Timer("main");
-    const result = this.manager.fetchTile(z, x, y, timer);
-    abortController.signal.addEventListener("abort", () => {
-      result.cancel();
-    });
     let timing: Timing;
     try {
-      const data = await result.value;
+      const data = await this.manager.fetchTile(
+        z,
+        x,
+        y,
+        abortController,
+        timer,
+      );
       timing = timer.finish(request.url);
       const arrayBuffer: ArrayBuffer = await data.data.arrayBuffer();
       return {
@@ -202,21 +214,18 @@ export class DemSource {
     abortController: AbortController,
   ) => {
     const timer = new Timer("main");
-    const [z, x, y] = this.parseUrl(request.url);
-    const options = decodeOptions(request.url);
-    const result = this.manager.fetchContourTile(
-      z,
-      x,
-      y,
-      getOptionsForZoom(options, z),
-      timer,
-    );
-    abortController.signal.addEventListener("abort", () => {
-      result.cancel();
-    });
     let timing: Timing;
     try {
-      const data = await result.value;
+      const [z, x, y] = this.parseUrl(request.url);
+      const options = decodeOptions(request.url);
+      const data = await this.manager.fetchContourTile(
+        z,
+        x,
+        y,
+        getOptionsForZoom(options, z),
+        abortController,
+        timer,
+      );
       timing = timer.finish(request.url);
       return { data: data.arrayBuffer };
     } catch (error) {
