@@ -31,7 +31,7 @@
     100,
     "terrarium",
     12,
-    10_000
+    10_000,
   );
 
   const demoManager = new LocalDemManager(
@@ -39,20 +39,18 @@
     100,
     "mapbox",
     11,
-    10_000
+    10_000,
   );
   let noMoreFetch = false;
   if (typeof document === "undefined") {
-    demoManager.decodeImage = awsManager.decodeImage = (blob, encoding) => ({
-      cancel() {},
-      value: blob.arrayBuffer().then((arrayBuffer) => {
+    demoManager.decodeImage = awsManager.decodeImage = (blob, encoding) =>
+      blob.arrayBuffer().then((arrayBuffer) => {
         if (noMoreFetch) {
           throw new Error("fetches expected to be done");
         }
         const data = PNG.sync.read(toBuffer(arrayBuffer));
         return decodeParsedImage(data.width, data.height, encoding, data.data);
-      }),
-    });
+      });
   }
 
   const suite = new Benchmark.Suite();
@@ -60,20 +58,20 @@
   await demoManager.fetchContourTile(12, 1088 * 2, 717 * 2, {
     levels: [5],
     overzoom: 1,
-  }).value;
+  });
 
   async function addAsyncBench(name, fn) {
-    await fn().value;
+    await fn();
     suite.add(name, {
       defer: true,
       fn: (deferred) => {
         demoManager.contourCache.clear();
         awsManager.contourCache.clear();
-        fn().value.then(
+        fn().then(
           () => deferred.resolve(),
           (err) => {
             throw err;
-          }
+          },
         );
       },
     });
@@ -83,7 +81,7 @@
     demoManager.fetchContourTile(12, 2176, 1435, {
       multiplier: 3.28084,
       levels: [50],
-    })
+    }),
   );
 
   await addAsyncBench("switzerland 512px", () =>
@@ -91,7 +89,7 @@
       multiplier: 3.28084,
       levels: [100],
       overzoom: 1,
-    })
+    }),
   );
 
   await addAsyncBench("switzerland 512px overzoomed hilly", () =>
@@ -99,7 +97,7 @@
       multiplier: 3.28084,
       levels: [10],
       overzoom: 1,
-    })
+    }),
   );
 
   await addAsyncBench("switzerland 512px overzoomed flat", () =>
@@ -107,7 +105,7 @@
       multiplier: 3.28084,
       levels: [10],
       overzoom: 1,
-    })
+    }),
   );
 
   await addAsyncBench("switzerland 512px very overzoomed", () =>
@@ -115,14 +113,14 @@
       multiplier: 3.28084,
       levels: [10],
       overzoom: 1,
-    })
+    }),
   );
 
   await addAsyncBench("everest 256px overzoomed", () =>
     awsManager.fetchContourTile(15, 24295, 13728, {
       multiplier: 3.28084,
       levels: [10],
-    })
+    }),
   );
 
   await addAsyncBench("everest 256px z12", () =>
@@ -133,22 +131,22 @@
       {
         multiplier: 3.28084,
         levels: [100],
-      }
-    )
+      },
+    ),
   );
 
   await addAsyncBench("everest 256px overzoomed z15", () =>
     awsManager.fetchContourTile(15, 24295, 13729, {
       multiplier: 3.28084,
       levels: [10],
-    })
+    }),
   );
 
   await addAsyncBench("everest 256px overzoomed z18", () =>
     awsManager.fetchContourTile(18, 24295 * (1 << 3), 13729 * (1 << 3), {
       multiplier: 3.28084,
       levels: [10],
-    })
+    }),
   );
 
   noMoreFetch = true;

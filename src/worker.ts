@@ -6,7 +6,7 @@ const g: any =
   typeof self !== "undefined"
     ? self
     : typeof window !== "undefined"
-    ? window
-    : global;
+      ? window
+      : global;
 
 g.actor = new Actor<MainThreadDispatch>(g, new WorkerDispatch());

@@ -1,23 +1,39 @@
 import Actor from "./actor";
 import { Timer } from "./performance";
-import { CancelablePromise } from "./types";
+import { onAbort } from "./utils";
 
 class Local {
   received: any[][] = [];
-  localAction = (x: number, y: number, z: number): CancelablePromise<void> => {
+  localAction = (
+    x: number,
+    y: number,
+    z: number,
+    // eslint-disable-next-line no-unused-vars
+    _: AbortController,
+  ): Promise<void> => {
     this.received.push([x, y, z]);
-    return { cancel() {}, value: Promise.resolve() };
+    return Promise.resolve();
   };
 }
 
 class Remote {
   received: any[][] = [];
   canceled = false;
-  remoteAction = (x: number, y: number, z: number): CancelablePromise<void> => {
+  remoteAction = (
+    x: number,
+    y: number,
+    z: number,
+    // eslint-disable-next-line no-unused-vars
+    _: AbortController,
+  ): Promise<void> => {
     this.received.push([x, y, z]);
-    return { cancel() {}, value: Promise.resolve() };
+    return Promise.resolve();
   };
-  remotePromise = (x: number, timer?: Timer): CancelablePromise<number> => {
+  remotePromise = (
+    x: number,
+    abortController?: AbortController,
+    timer?: Timer,
+  ): Promise<number> => {
     const oldNow = performance.now;
     if (timer) timer.timeOrigin = 100;
     performance.now = () => oldNow() - 100;
@@ -25,23 +41,16 @@ class Remote {
     performance.now = () => oldNow() - 99;
     finish?.();
     performance.now = () => oldNow() + 2;
-    return {
-      cancel() {
-        throw new Error("not expected");
-      },
-      value: Promise.resolve(x),
-    };
+    onAbort(abortController, () => {
+      throw new Error("not expected");
+    });
+    return Promise.resolve(x);
   };
-  remoteFail = (): CancelablePromise<number> => ({
-    cancel() {},
-    value: Promise.reject(new Error("error")),
-  });
-  remoteNever = (): CancelablePromise<number> => ({
-    cancel: () => {
-      this.canceled = true;
-    },
-    value: new Promise(() => {}),
-  });
+  remoteFail = (): Promise<number> => Promise.reject(new Error("error"));
+  remoteNever = (abortController?: AbortController): Promise<number> => {
+    onAbort(abortController, () => (this.canceled = true));
+    return new Promise(() => {});
+  };
 }
 
 test("send and cancel messages", async () => {
@@ -58,15 +67,23 @@ test("send and cancel messages", async () => {
     workerFromMainThread?.onmessage?.({ data });
   const mainActor = new Actor<Remote>(workerFromMainThread, local);
   const workerActor = new Actor<Local>(mainThreadFromWorker, remote);
-
-  mainActor.send("remoteAction", [], undefined, 1, 2, 3);
+  mainActor.send("remoteAction", [], new AbortController(), undefined, 1, 2, 3);
   expect(remote.received).toEqual([[1, 2, 3]]);
-  workerActor.send("localAction", [], undefined, 4, 3, 2);
+  workerActor.send(
+    "localAction",
+    [],
+    new AbortController(),
+    undefined,
+    4,
+    3,
+    2,
+  );
   expect(local.received).toEqual([[4, 3, 2]]);
-
   const timer = new Timer("main");
   timer.timeOrigin = 0;
-  expect(await mainActor.send("remotePromise", [], timer, 9).value).toBe(9);
+  expect(
+    await mainActor.send("remotePromise", [], new AbortController(), timer, 9),
+  ).toBe(9);
   expect(timer.finish("url")).toMatchObject({
     duration: 2,
     fetch: 1,
@@ -75,12 +92,15 @@ test("send and cancel messages", async () => {
       main: [[1, 3]],
     },
   });
-  const { cancel } = mainActor.send("remoteNever", []);
+  const abortController = new AbortController();
+  let resolveThrew;
+  const threw = new Promise<boolean>((res) => (resolveThrew = res));
+  mainActor.send("remoteNever", [], abortController).catch(resolveThrew);
   expect(remote.canceled).toBeFalsy();
-  cancel();
+  abortController.abort();
   expect(remote.canceled).toBeTruthy();
-
-  await expect(mainActor.send("remoteFail", []).value).rejects.toThrowError(
-    "Error: error",
-  );
+  expect(threw).resolves.toBeTruthy();
+  await expect(
+    mainActor.send("remoteFail", [], new AbortController()),
+  ).rejects.toThrow("Error: error");
 });

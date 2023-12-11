@@ -109,53 +109,39 @@ test("encode individual options", () => {
 });
 
 test("withTimeout - times out", async () => {
-  const cancel = jest.fn();
-  const result = withTimeout(1000, {
-    value: new Promise(() => {}),
-    cancel,
-  });
+  const ac = new AbortController();
+  const result = withTimeout(1000, new Promise(() => {}), ac);
   jest.advanceTimersByTime(999);
-  expect(cancel).not.toBeCalled();
+  expect(ac.signal.aborted).toBeFalsy();
   jest.advanceTimersByTime(2);
-  expect(cancel).toBeCalledTimes(1);
-  await expect(result.value).rejects.toThrow(new Error("timed out"));
+  expect(ac.signal.aborted).toBeTruthy();
+  await expect(result).rejects.toThrow(new Error("timed out"));
 });
 
 test("withTimeout - resolve cancels timer", async () => {
-  const cancel = jest.fn();
-  const result = withTimeout(1000, {
-    value: Promise.resolve(true),
-    cancel,
-  });
-  await expect(result.value).resolves.toBe(true);
+  const ac = new AbortController();
+  const result = withTimeout(1000, Promise.resolve(true), ac);
+  await expect(result).resolves.toBe(true);
   jest.advanceTimersByTime(10_000);
-  expect(cancel).not.toBeCalled();
-  await expect(result.value).resolves.toBe(true);
+  expect(ac.signal.aborted).toBeFalsy();
+  await expect(result).resolves.toBe(true);
 });
 
 test("withTimeout - reject cancels timer", async () => {
-  const cancel = jest.fn();
+  const ac = new AbortController();
   const error = new Error("rejected");
-  const result = withTimeout(1000, {
-    value: Promise.reject(error),
-    cancel,
-  });
-  await expect(result.value).rejects.toBe(error);
+  const result = withTimeout(1000, Promise.reject(error), ac);
+  await expect(result).rejects.toBe(error);
   jest.advanceTimersByTime(10_000);
-  expect(cancel).not.toBeCalled();
-  await expect(result.value).rejects.toBe(error);
+  expect(ac.signal.aborted).toBeFalsy();
+  await expect(result).rejects.toBe(error);
 });
 
 test("withTimeout - cancel cancels timer", async () => {
-  const cancel = jest.fn();
-  const result = withTimeout(1000, {
-    value: new Promise(() => {}),
-    cancel,
-  });
-  result.cancel();
-  expect(cancel).toBeCalledTimes(1);
-  jest.advanceTimersByTime(10_000);
-  expect(cancel).toBeCalledTimes(1);
+  const ac = new AbortController();
+  const result = withTimeout(1000, new Promise(() => {}), ac);
+  ac.abort();
+  await expect(result).rejects.toThrow();
 });
 
 test("should use video frame", async () => {

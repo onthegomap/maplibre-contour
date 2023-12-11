@@ -1,5 +1,4 @@
 import {
-  CancelablePromise,
   ContourTile,
   DemTile,
   GlobalContourTileOptions,
@@ -102,13 +101,6 @@ export function getOptionsForZoom(
   };
 }
 
-export function map<T, U>(
-  { cancel, value }: CancelablePromise<T>,
-  mapper: (t: T) => U,
-) {
-  return { cancel, value: value.then(mapper) };
-}
-
 export function copy(src: ArrayBuffer): ArrayBuffer {
   const dst = new ArrayBuffer(src.byteLength);
   new Uint8Array(dst).set(new Uint8Array(src));
@@ -116,10 +108,10 @@ export function copy(src: ArrayBuffer): ArrayBuffer {
 }
 
 export function prepareDemTile(
-  promise: CancelablePromise<DemTile>,
+  promise: Promise<DemTile>,
   copy: boolean,
-): CancelablePromise<TransferrableDemTile> {
-  return map(promise, ({ data, ...rest }) => {
+): Promise<TransferrableDemTile> {
+  return promise.then(({ data, ...rest }) => {
     let newData = data;
     if (copy) {
       newData = new Float32Array(data.length);
@@ -130,9 +122,9 @@ export function prepareDemTile(
 }
 
 export function prepareContourTile(
-  promise: CancelablePromise<ContourTile>,
-): CancelablePromise<TransferrableContourTile> {
-  return map(promise, ({ arrayBuffer }) => {
+  promise: Promise<ContourTile>,
+): Promise<TransferrableContourTile> {
+  return promise.then(({ arrayBuffer }) => {
     const clone = copy(arrayBuffer);
     return {
       arrayBuffer: clone,
@@ -187,30 +179,36 @@ export function shouldUseVideoFrame(): boolean {
 
 export function withTimeout<T>(
   timeoutMs: number,
-  { value, cancel }: CancelablePromise<T>,
-): CancelablePromise<T> {
+  value: Promise<T>,
+  abortController?: AbortController,
+): Promise<T> {
   let reject: (error: Error) => void = () => {};
   const timeout = setTimeout(() => {
-    cancel();
     reject(new Error("timed out"));
+    abortController?.abort();
   }, timeoutMs);
+  onAbort(abortController, () => {
+    reject(new Error("aborted"));
+    clearTimeout(timeout);
+  });
   const cancelPromise: Promise<any> = new Promise((_, rej) => {
     reject = rej;
   });
-  return {
-    value: Promise.race([
-      cancelPromise,
-      (async () => {
-        try {
-          return await value;
-        } finally {
-          clearTimeout(timeout);
-        }
-      })(),
-    ]),
-    cancel: () => {
-      clearTimeout(timeout);
-      cancel();
-    },
-  };
+  return Promise.race([
+    cancelPromise,
+    value.finally(() => clearTimeout(timeout)),
+  ]);
+}
+
+export function onAbort(
+  abortController?: AbortController,
+  action?: () => void,
+) {
+  if (action) {
+    abortController?.signal.addEventListener("abort", action);
+  }
+}
+
+export function isAborted(abortController?: AbortController): boolean {
+  return Boolean(abortController?.signal?.aborted);
 }

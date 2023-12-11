@@ -1,9 +1,9 @@
-import { CancelablePromise } from "./types";
+import { onAbort } from "./utils";
 
 interface CacheItem<V> {
   lastUsed: number;
   waiting: number;
-  cancel?: () => void;
+  abortController?: AbortController;
   item: Promise<V>;
 }
 
@@ -24,22 +24,18 @@ export default class AsyncCache<K, V> {
 
   size = () => this.items.size;
 
-  get = (key: K, supplier: (key: K) => Promise<V>): Promise<V> =>
-    this.getCancelable(key, (key) => ({
-      value: supplier(key),
-      cancel: () => {},
-    })).value;
-
-  getCancelable = (
+  get = (
     key: K,
-    supplier: (key: K) => CancelablePromise<V>,
-  ): { value: Promise<V>; cancel: () => void } => {
+    supplier: (key: K, abortController: AbortController) => Promise<V>,
+    abortController: AbortController,
+  ): Promise<V> => {
     let result: CacheItem<V> | undefined = this.items.get(key);
     if (!result) {
-      const value = supplier(key);
+      const sharedAbortController = new AbortController();
+      const value = supplier(key, sharedAbortController);
       result = {
-        cancel: value.cancel,
-        item: value.value,
+        abortController: sharedAbortController,
+        item: value,
         lastUsed: ++num,
         waiting: 1,
       };
@@ -58,18 +54,16 @@ export default class AsyncCache<K, V> {
       },
     );
     let canceled = false;
-    return {
-      value,
-      cancel: () => {
-        if (result && result.cancel && !canceled) {
-          canceled = true;
-          if (--result.waiting <= 0) {
-            result.cancel();
-            items.delete(key);
-          }
+    onAbort(abortController, () => {
+      if (result && result.abortController && !canceled) {
+        canceled = true;
+        if (--result.waiting <= 0) {
+          result.abortController?.abort();
+          items.delete(key);
         }
-      },
-    };
+      }
+    });
+    return value;
   };
 
   prune() {
