@@ -207,7 +207,7 @@ export class LocalDemManager implements DemManager {
     const key = [z, x, y, encodeIndividualOptions(options)].join("/");
     return this.contourCache.get(
       key,
-      (_, childAbortController) => {
+      async (_, childAbortController) => {
         const max = 1 << z;
         const neighborPromises: (Promise<HeightTile> | undefined)[] = [];
         for (let iy = y - 1; iy <= y + 1; iy++) {
@@ -226,58 +226,57 @@ export class LocalDemManager implements DemManager {
             );
           }
         }
-        return Promise.all(neighborPromises).then(async (neighbors) => {
-          let virtualTile = HeightTile.combineNeighbors(neighbors);
-          if (!virtualTile || isAborted(childAbortController)) {
-            return { arrayBuffer: new Uint8Array().buffer };
+        const neighbors = await Promise.all(neighborPromises);
+        let virtualTile = HeightTile.combineNeighbors(neighbors);
+        if (!virtualTile || isAborted(childAbortController)) {
+          return { arrayBuffer: new Uint8Array().buffer };
+        }
+        const mark = timer?.marker("isoline");
+
+        if (virtualTile.width >= subsampleBelow) {
+          virtualTile = virtualTile.materialize(2);
+        } else {
+          while (virtualTile.width < subsampleBelow) {
+            virtualTile = virtualTile.subsamplePixelCenters(2).materialize(2);
           }
-          const mark = timer?.marker("isoline");
+        }
 
-          if (virtualTile.width >= subsampleBelow) {
-            virtualTile = virtualTile.materialize(2);
-          } else {
-            while (virtualTile.width < subsampleBelow) {
-              virtualTile = virtualTile.subsamplePixelCenters(2).materialize(2);
-            }
-          }
+        virtualTile = virtualTile
+          .averagePixelCentersToGrid()
+          .scaleElevation(multiplier)
+          .materialize(1);
 
-          virtualTile = virtualTile
-            .averagePixelCentersToGrid()
-            .scaleElevation(multiplier)
-            .materialize(1);
+        const isolines = generateIsolines(
+          levels[0],
+          virtualTile,
+          extent,
+          buffer,
+        );
 
-          const isolines = generateIsolines(
-            levels[0],
-            virtualTile,
-            extent,
-            buffer,
-          );
-
-          mark?.();
-          const result = encodeVectorTile({
-            extent,
-            layers: {
-              [contourLayer]: {
-                features: Object.entries(isolines).map(([eleString, geom]) => {
-                  const ele = Number(eleString);
-                  return {
-                    type: GeomType.LINESTRING,
-                    geometry: geom,
-                    properties: {
-                      [elevationKey]: ele,
-                      [levelKey]: Math.max(
-                        ...levels.map((l, i) => (ele % l === 0 ? i : 0)),
-                      ),
-                    },
-                  };
-                }),
-              },
+        mark?.();
+        const result = encodeVectorTile({
+          extent,
+          layers: {
+            [contourLayer]: {
+              features: Object.entries(isolines).map(([eleString, geom]) => {
+                const ele = Number(eleString);
+                return {
+                  type: GeomType.LINESTRING,
+                  geometry: geom,
+                  properties: {
+                    [elevationKey]: ele,
+                    [levelKey]: Math.max(
+                      ...levels.map((l, i) => (ele % l === 0 ? i : 0)),
+                    ),
+                  },
+                };
+              }),
             },
-          });
-          mark?.();
-
-          return { arrayBuffer: result.buffer };
+          },
         });
+        mark?.();
+
+        return { arrayBuffer: result.buffer };
       },
       parentAbortController,
     );

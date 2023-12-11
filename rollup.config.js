@@ -21,6 +21,7 @@ const create = (file, format, plugins = []) => ({
   plugins,
 });
 
+/** @type {import('rollup').RollupOptions[]} */
 export default [
   {
     input: ["src/index.ts", "src/worker.ts"],
@@ -29,6 +30,7 @@ export default [
       format: "amd",
       indent: false,
       chunkFileNames: "shared.js",
+      minifyInternalExports: true,
     },
     onwarn: (message) => {
       console.error(message);
