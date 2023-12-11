@@ -11,7 +11,6 @@
   "dependencies": {
     "maplibre-contour": "file:..",
     "maplibre-gl": "4.0.0-pre.2",
-    "@types/geojson-vt": "*",
     "typescript": "*"
   }
 }

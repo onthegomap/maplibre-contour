@@ -14,14 +14,6 @@ updates:
     open-pull-requests-limit: 1
     versioning-strategy: increase
   - package-ecosystem: "npm" # See documentation for possible values
-    directory: "/test-project-maplibre-3" # Location of package manifests
-    schedule:
-      interval: daily
-      time: "04:30"
-      timezone: America/New_York
-    open-pull-requests-limit: 1
-    versioning-strategy: increase
-  - package-ecosystem: "npm" # See documentation for possible values
     directory: "/test-project" # Location of package manifests
     schedule:
       interval: daily
