@@ -7,6 +7,10 @@
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "exports": {
+    "module": "./dist/index.mjs",
+    "require": "./dist/index.cjs"
+  },
   "scripts": {
     "bench": "npm run build && node benchmark.js",
     "build": "rm -rf dist && rollup -c && npm run generate-types && tsc --project tsconfig.dist.json",
