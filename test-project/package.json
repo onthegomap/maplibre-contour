@@ -4,11 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "tsc --noEmit"
+    "test": "tsc --noEmit && esbuild index.ts --bundle"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "esbuild": "*",
     "maplibre-contour": "file:..",
     "maplibre-gl": "4.0.0-pre.2",
     "typescript": "*"
