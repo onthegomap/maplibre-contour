@@ -5,7 +5,6 @@ import decodeImage from "./decode-image";
 import type { DemManager } from "./dem-manager";
 import { Timer } from "./performance";
 import {
-  CancelablePromise,
   ContourTile,
   DemTile,
   Encoding,
@@ -18,8 +17,11 @@ let _actor: Actor<WorkerDispatch> | undefined;
 let id = 0;
 
 export class MainThreadDispatch {
-  decodeImage = (blob: Blob, encoding: Encoding) =>
-    prepareDemTile(decodeImage(blob, encoding), false);
+  decodeImage = (
+    blob: Blob,
+    encoding: Encoding,
+    abortController: AbortController,
+  ) => prepareDemTile(decodeImage(blob, encoding, abortController), false);
 }
 
 function defaultActor(): Actor<WorkerDispatch> {
@@ -49,40 +51,68 @@ export default class RemoteDemManager implements DemManager {
   ) {
     const managerId = (this.managerId = ++id);
     this.actor = actor || defaultActor();
-    this.loaded = this.actor.send("init", [], undefined, {
-      cacheSize,
-      demUrlPattern,
-      encoding,
-      maxzoom,
-      managerId,
-      timeoutMs,
-    }).value;
+    this.loaded = this.actor.send(
+      "init",
+      [],
+      new AbortController(),
+      undefined,
+      {
+        cacheSize,
+        demUrlPattern,
+        encoding,
+        maxzoom,
+        managerId,
+        timeoutMs,
+      },
+    );
   }
 
   fetchTile = (
     z: number,
     x: number,
     y: number,
+    abortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<FetchResponse> =>
-    this.actor.send("fetchTile", [], timer, this.managerId, z, x, y);
+  ): Promise<FetchResponse> =>
+    this.actor.send(
+      "fetchTile",
+      [],
+      abortController,
+      timer,
+      this.managerId,
+      z,
+      x,
+      y,
+    );
   fetchAndParseTile = (
     z: number,
     x: number,
     y: number,
+    abortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<DemTile> =>
-    this.actor.send("fetchAndParseTile", [], timer, this.managerId, z, x, y);
+  ): Promise<DemTile> =>
+    this.actor.send(
+      "fetchAndParseTile",
+      [],
+      abortController,
+      timer,
+      this.managerId,
+      z,
+      x,
+      y,
+    );
   fetchContourTile = (
     z: number,
     x: number,
     y: number,
     options: IndividualContourTileOptions,
+    abortController: AbortController,
     timer?: Timer,
-  ): CancelablePromise<ContourTile> =>
+  ): Promise<ContourTile> =>
     this.actor.send(
       "fetchContourTile",
       [],
+      abortController,
       timer,
       this.managerId,
       z,

@@ -1,6 +1,6 @@
 import { Timer } from "./performance";
-import { CancelablePromise, IsTransferrable, Timing } from "./types";
-import { withTimeout } from "./utils";
+import { IsTransferrable, Timing } from "./types";
+import { onAbort, withTimeout } from "./utils";
 
 let id = 0;
 
@@ -26,6 +26,7 @@ type Message = Cancel | Response | Request;
 type MethodsReturning<T, R> = {
   [K in keyof T]: T[K] extends (...args: any) => R ? T[K] : never;
 };
+type Head<T extends any[]> = T extends [...infer Head, any] ? Head : any[];
 
 /**
  * Utility for sending messages to a remote instance of `<T>` running in a web worker
@@ -39,7 +40,7 @@ export default class Actor<T> {
       timings: Timing,
     ) => void;
   };
-  cancels: { [id: number]: () => void };
+  cancels: { [id: number]: AbortController };
   dest: Worker;
   timeoutMs: number;
   constructor(dest: Worker, dispatcher: any, timeoutMs: number = 20_000) {
@@ -52,9 +53,7 @@ export default class Actor<T> {
       if (message.type === "cancel") {
         const cancel = this.cancels[message.id];
         delete this.cancels[message.id];
-        if (cancel) {
-          cancel();
-        }
+        cancel?.abort();
       } else if (message.type === "response") {
         const callback = this.callbacks[message.id];
         delete this.callbacks[message.id];
@@ -68,12 +67,17 @@ export default class Actor<T> {
       } else if (message.type === "request") {
         const timer = new Timer("worker");
         const handler: Function = (dispatcher as any)[message.name];
-        const request = handler.apply(handler, [...message.args, timer]);
+        const abortController = new AbortController();
+        const request = handler.apply(handler, [
+          ...message.args,
+          abortController,
+          timer,
+        ]);
         const url = `${message.name}_${message.id}`;
         if (message.id && request) {
-          this.cancels[message.id] = request.cancel;
+          this.cancels[message.id] = abortController;
           try {
-            const response = await request.value;
+            const response = await request;
             const transferrables = (response as IsTransferrable)
               ?.transferrables;
             this.postMessage(
@@ -106,15 +110,16 @@ export default class Actor<T> {
   /** Invokes a method by name with a set of arguments in the remote context. */
   send<
     R,
-    M extends MethodsReturning<T, CancelablePromise<R>>,
+    M extends MethodsReturning<T, Promise<R>>,
     K extends keyof M & string,
-    P extends Parameters<M[K]>,
+    P extends Head<Parameters<M[K]>>,
   >(
     name: K,
     transferrables: Transferable[],
+    abortController: AbortController,
     timer?: Timer,
     ...args: P
-  ): CancelablePromise<R> {
+  ): Promise<R> {
     const thisId = ++id;
     const value: Promise<R> = new Promise((resolve, reject) => {
       this.postMessage(
@@ -128,12 +133,11 @@ export default class Actor<T> {
       };
     });
 
-    return withTimeout(this.timeoutMs, {
-      value,
-      cancel: () => {
-        delete this.callbacks[thisId];
-        this.postMessage({ id: thisId, type: "cancel" });
-      },
+    onAbort(abortController, () => {
+      delete this.callbacks[thisId];
+      this.postMessage({ id: thisId, type: "cancel" });
     });
+
+    return withTimeout(this.timeoutMs, value, abortController);
   }
 }

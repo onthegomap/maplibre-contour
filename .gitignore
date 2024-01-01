@@ -9,3 +9,4 @@ lerna-debug.log*
 .pnpm-debug.log*
 TODO
 target
+test-project*/package-lock.json

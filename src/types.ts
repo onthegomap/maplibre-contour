@@ -20,14 +20,6 @@ export interface TransferrableContourTile
   extends ContourTile,
     IsTransferrable {}
 
-export interface Cancelable {
-  cancel: () => void;
-}
-
-export interface CancelablePromise<T> extends Cancelable {
-  value: Promise<T>;
-}
-
 export interface FetchResponse {
   data: Blob;
   expires?: string;

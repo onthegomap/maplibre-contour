@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "maplibre-contour": "file:..",
-    "maplibre-gl": "4.0.0-pre.2",
+    "maplibre-gl": "3.6.2",
     "typescript": "*"
   }
 }

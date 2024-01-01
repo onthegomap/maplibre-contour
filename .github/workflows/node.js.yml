@@ -27,6 +27,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - run: npm run test-build-v3
       - run: npm run test-build
       # benchmark script only works on node 18+
       - run: node benchmark.js
