@@ -47,7 +47,7 @@ type ResponseCallbackV3 = (
   cacheControl?: string | undefined,
   expires?: string | undefined,
 ) => void;
-type V3OfV4Protocol = <
+type V3OrV4Protocol = <
   T extends AbortController | ResponseCallbackV3,
   R = T extends AbortController
     ? Promise<GetResourceResponse<ArrayBuffer>>
@@ -58,22 +58,24 @@ type V3OfV4Protocol = <
 ) => R;
 
 const v3compat =
-  (v4: AddProtocolAction): V3OfV4Protocol =>
+  (v4: AddProtocolAction): V3OrV4Protocol =>
   (requestParameters, arg2) => {
     if (arg2 instanceof AbortController) {
       return v4(requestParameters, arg2) as any;
     } else {
       const abortController = new AbortController();
-      v4(requestParameters, abortController).then(
-        (result) =>
-          arg2(
-            undefined,
-            result.data,
-            result.cacheControl as any,
-            result.expires as any,
-          ),
-        (err) => arg2(err),
-      );
+      v4(requestParameters, abortController)
+        .then(
+          (result) =>
+            arg2(
+              undefined,
+              result.data,
+              result.cacheControl as any,
+              result.expires as any,
+            ),
+          (err) => arg2(err),
+        )
+        .catch((err) => arg2(err));
       return { cancel: () => abortController.abort() };
     }
   };
@@ -161,7 +163,7 @@ export class DemSource {
    * @param maplibre maplibre global object
    */
   setupMaplibre = (maplibre: {
-    addProtocol: (id: string, protcol: V3OfV4Protocol) => void;
+    addProtocol: (id: string, protcol: V3OrV4Protocol) => void;
   }) => {
     maplibre.addProtocol(this.sharedDemProtocolId, this.sharedDemProtocol);
     maplibre.addProtocol(this.contourProtocolId, this.contourProtocol);
@@ -236,8 +238,8 @@ export class DemSource {
     }
   };
 
-  contourProtocol: V3OfV4Protocol = v3compat(this.contourProtocolV4);
-  sharedDemProtocol: V3OfV4Protocol = v3compat(this.sharedDemProtocolV4);
+  contourProtocol: V3OrV4Protocol = v3compat(this.contourProtocolV4);
+  sharedDemProtocol: V3OrV4Protocol = v3compat(this.sharedDemProtocolV4);
 
   /**
    * Returns a URL with the correct maplibre protocol prefix and all `option` encoded in request parameters.
