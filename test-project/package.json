@@ -11,7 +11,7 @@
   "dependencies": {
     "esbuild": "*",
     "maplibre-contour": "file:..",
-    "maplibre-gl": "4.2.0",
+    "maplibre-gl": "4.3.0",
     "typescript": "*"
   }
 }
