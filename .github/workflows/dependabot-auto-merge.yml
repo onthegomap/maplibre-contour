@@ -11,10 +11,12 @@ permissions:
 jobs:
   dependabot:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' && github.actor == 'dependabot[bot]' }}
     steps:
+      - name: Debug log
+        run: echo ${{ toJSON(github.event.workflow_run) }}
       - name: Auto-merge dependabot pull request
         run: gh pr merge --auto --squash "${PR_BRANCH}" --repo ${{ github.repository }}
+        if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' && github.actor == 'dependabot[bot]' }}
         env:
           PR_BRANCH: ${{github.event.workflow_run.head_branch}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
