@@ -1,3 +1,5 @@
+import mourner from "eslint-config-mourner";
+import prettier from "eslint-config-prettier";
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import path from "node:path";
@@ -8,29 +10,36 @@ import { FlatCompat } from "@eslint/eslintrc";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const compat = new FlatCompat({
-    baseDirectory: __dirname,
-    recommendedConfig: js.configs.recommended,
-    allConfig: js.configs.all
+  baseDirectory: __dirname,
+  recommendedConfig: js.configs.recommended,
+  allConfig: js.configs.all,
 });
 
-export default [...compat.extends("mourner", "prettier"), {
+export default [
+  ...mourner,
+  prettier,
+  {
     plugins: {
-        "@typescript-eslint": typescriptEslint,
+      "@typescript-eslint": typescriptEslint,
     },
 
     languageOptions: {
-        parser: tsParser,
+      parser: tsParser,
     },
 
     rules: {
-        "@typescript-eslint/no-dupe-class-members": ["error"],
+      "@typescript-eslint/no-dupe-class-members": ["error"],
 
-        "@typescript-eslint/no-unused-vars": ["warn", {
-            argsIgnorePattern: "^_",
-        }],
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+        },
+      ],
 
-        "@typescript-eslint/member-delimiter-style": ["error"],
-        "@typescript-eslint/no-useless-constructor": ["error"],
-        "no-undef": "off",
+      "@typescript-eslint/member-delimiter-style": ["error"],
+      "@typescript-eslint/no-useless-constructor": ["error"],
+      "no-undef": "off",
     },
-}];
+  },
+];
