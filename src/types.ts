@@ -91,7 +91,7 @@ export type TimingCategory = "main" | "worker" | "fetch" | "decode" | "isoline";
 /** Performance profile for a tile request */
 export interface Timing {
   /** The "virtual" tile url using the protocol ID registered with maplibre */
-  url: String;
+  url: string;
   /** Timing origin that all marks are relative to. */
   origin: number;
   /** Overall duration of the request */

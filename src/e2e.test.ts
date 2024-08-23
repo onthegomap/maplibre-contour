@@ -16,7 +16,7 @@ afterEach(() => {
 
 jest.mock("./decode-image", () => (): Promise<DemTile> => {
   jest.advanceTimersByTime(1);
-  // eslint-disable-next-line global-require
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const flattenDeep = require("lodash/flattenDeep");
   const value: DemTile = {
     data: Float32Array.from(
