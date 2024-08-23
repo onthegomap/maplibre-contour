@@ -1,4 +1,3 @@
-/* eslint-disable no-restricted-globals */
 import type Actor from "./actor";
 import {
   isAborted,
@@ -73,7 +72,7 @@ async function decodeImageVideoFrame(
       }
     }
     return decodeParsedImage(img.width, img.height, encoding, data);
-  } catch (e) {
+  } catch (_) {
     if (isAborted(abortController)) return null as any as DemTile;
     // fall back to offscreen canvas
     return decodeImageUsingOffscreenCanvas(img, encoding);
@@ -134,10 +133,10 @@ function decodeImageOnMainThread(
 
 function isWorker(): boolean {
   return (
-    // @ts-ignore
+    // @ts-expect-error WorkerGlobalScope defined
     typeof WorkerGlobalScope !== "undefined" &&
     typeof self !== "undefined" &&
-    // @ts-ignore
+    // @ts-expect-error WorkerGlobalScope defined
     self instanceof WorkerGlobalScope
   );
 }

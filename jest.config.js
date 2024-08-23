@@ -13,5 +13,5 @@ export default {
   testEnvironment: "jsdom",
   setupFiles: ["<rootDir>/src/setup-jest.ts"],
   testMatch: ["<rootDir>/src/**/*.test.{ts,js}"],
-  transformIgnorePatterns: [`node_modules/.*`],
+  transformIgnorePatterns: ["!<rootDir>/node_modules/"],
 };

@@ -8,7 +8,6 @@ class Local {
     x: number,
     y: number,
     z: number,
-    // eslint-disable-next-line no-unused-vars
     _: AbortController,
   ): Promise<void> => {
     this.received.push([x, y, z]);
@@ -23,7 +22,6 @@ class Remote {
     x: number,
     y: number,
     z: number,
-    // eslint-disable-next-line no-unused-vars
     _: AbortController,
   ): Promise<void> => {
     this.received.push([x, y, z]);
@@ -60,10 +58,10 @@ test("send and cancel messages", async () => {
   const workerFromMainThread: Worker = {} as any as Worker;
   const mainThreadFromWorker: Worker = {} as any as Worker;
   workerFromMainThread.postMessage = (data) =>
-    //@ts-ignore
+    //@ts-expect-error handle data
     mainThreadFromWorker?.onmessage?.({ data });
   mainThreadFromWorker.postMessage = (data) =>
-    //@ts-ignore
+    //@ts-expect-error handle data
     workerFromMainThread?.onmessage?.({ data });
   const mainActor = new Actor<Remote>(workerFromMainThread, local);
   const workerActor = new Actor<Local>(mainThreadFromWorker, remote);

@@ -123,6 +123,7 @@ export class LocalDemManager implements DemManager {
     abortController: AbortController,
     timer?: Timer,
   ): Promise<DemTile> => {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     const url = this.demUrlPattern
       .replace("{z}", z.toString())
