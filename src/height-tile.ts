@@ -1,4 +1,4 @@
-import { DemTile } from "./types";
+import type { DemTile } from "./types";
 
 const MIN_VALID_M = -12000;
 const MAX_VALID_M = 9000;

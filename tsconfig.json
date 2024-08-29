@@ -3,14 +3,15 @@
     "target": "ES2016",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "strict": true,
-    "moduleResolution": "node",
+    "moduleResolution": "Bundler",
     "allowJs": true,
     "skipLibCheck": false,
     "types": ["jest", "node"],
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
     "module": "ESNext",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "verbatimModuleSyntax": true
   },
   "ts-node": {
     "experimentalSpecifierResolution": "node",

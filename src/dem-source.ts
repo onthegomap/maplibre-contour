@@ -1,7 +1,8 @@
-import { DemManager, LocalDemManager } from "./dem-manager";
+import type { DemManager } from "./dem-manager";
+import { LocalDemManager } from "./dem-manager";
 import { decodeOptions, encodeOptions, getOptionsForZoom } from "./utils";
 import RemoteDemManager from "./remote-dem-manager";
-import { DemTile, GlobalContourTileOptions, Timing } from "./types";
+import type { DemTile, GlobalContourTileOptions, Timing } from "./types";
 import type WorkerDispatch from "./worker-dispatch";
 import Actor from "./actor";
 import { Timer } from "./performance";

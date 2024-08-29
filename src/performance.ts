@@ -1,4 +1,4 @@
-import { Timing, TimingCategory } from "./types";
+import type { Timing, TimingCategory } from "./types";
 
 export const perf =
   typeof performance !== "undefined" ? performance : undefined;

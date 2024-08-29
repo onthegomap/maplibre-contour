@@ -1,5 +1,5 @@
 import { Timer } from "./performance";
-import { IsTransferrable, Timing } from "./types";
+import type { IsTransferrable, Timing } from "./types";
 import { onAbort, withTimeout } from "./utils";
 
 let id = 0;

@@ -3,7 +3,7 @@ import decodeImage from "./decode-image";
 import { HeightTile } from "./height-tile";
 import generateIsolines from "./isolines";
 import { encodeIndividualOptions, isAborted, withTimeout } from "./utils";
-import {
+import type {
   ContourTile,
   DemTile,
   Encoding,
