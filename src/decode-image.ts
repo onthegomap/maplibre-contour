@@ -6,7 +6,7 @@ import {
   shouldUseVideoFrame,
 } from "./utils";
 import type { MainThreadDispatch } from "./remote-dem-manager";
-import { DemTile, Encoding } from "./types";
+import type { DemTile, Encoding } from "./types";
 
 let offscreenCanvas: OffscreenCanvas;
 let offscreenContext: OffscreenCanvasRenderingContext2D | null;

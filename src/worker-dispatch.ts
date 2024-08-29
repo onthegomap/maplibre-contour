@@ -1,6 +1,6 @@
 import { LocalDemManager } from "./dem-manager";
 import { Timer } from "./performance";
-import {
+import type {
   ContourTile,
   FetchResponse,
   IndividualContourTileOptions,

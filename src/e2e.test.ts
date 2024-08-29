@@ -3,7 +3,7 @@ import Actor from "./actor";
 import WorkerDispatch from "./worker-dispatch";
 import { DemSource } from "./dem-source";
 import { MainThreadDispatch } from "./remote-dem-manager";
-import { DemTile, Timing } from "./types";
+import type { DemTile, Timing } from "./types";
 import { VectorTile } from "@mapbox/vector-tile";
 import Pbf from "pbf";
 
