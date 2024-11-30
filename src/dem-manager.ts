@@ -277,7 +277,7 @@ export class LocalDemManager implements DemManager {
         });
         mark?.();
 
-        return { arrayBuffer: result.buffer };
+        return { arrayBuffer: result.buffer as ArrayBuffer };
       },
       parentAbortController,
     );
