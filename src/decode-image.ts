@@ -7,11 +7,24 @@ import {
 } from "./utils";
 import type { MainThreadDispatch } from "./remote-dem-manager";
 import type { DemTile, Encoding } from "./types";
+import {PNG} from "pngjs";
 
 let offscreenCanvas: OffscreenCanvas;
 let offscreenContext: OffscreenCanvasRenderingContext2D | null;
 let canvas: HTMLCanvasElement;
 let canvasContext: CanvasRenderingContext2D | null;
+
+async function decodeImageNode(
+  blob: Blob,
+  encoding: Encoding,
+  abortController: AbortController,
+): Promise<DemTile> {
+  const buffer = await blob.arrayBuffer();
+  const png = PNG.sync.read(Buffer.from(buffer));
+  const parsed = decodeParsedImage(png.width, png.height, encoding, png.data as any as Uint8ClampedArray);
+  if (isAborted(abortController)) return null as any as DemTile;
+  return parsed;
+}
 
 /**
  * Parses a `raster-dem` image into a DemTile using Webcoded VideoFrame API.
@@ -151,7 +164,9 @@ const defaultDecoder: (
     ? decodeImageModern
     : isWorker()
       ? decodeImageOnMainThread
-      : decodeImageOld;
+      : typeof document !== "undefined"
+        ? decodeImageOld
+        : decodeImageNode;
 
 export default defaultDecoder;
 
