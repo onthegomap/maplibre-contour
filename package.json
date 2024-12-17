@@ -42,7 +42,7 @@
   ],
   "devDependencies": {
     "@eslint/eslintrc": "3.2.0",
-    "@eslint/js": "9.16.0",
+    "@eslint/js": "9.17.0",
     "@mapbox/vector-tile": "2.0.3",
     "@rollup/plugin-commonjs": "28.0.1",
     "@rollup/plugin-node-resolve": "16.0.0",
