@@ -1,5 +1,5 @@
 import AsyncCache from "./cache";
-import decodeImageImpl from "./decode-image";
+import defaultDecodeImage from "./decode-image";
 import { HeightTile } from "./height-tile";
 import generateIsolines from "./isolines";
 import { encodeIndividualOptions, isAborted, withTimeout } from "./utils";
@@ -56,7 +56,7 @@ export class LocalDemManager implements DemManager {
     this.demUrlPattern = options.demUrlPattern;
     this.encoding = options.encoding;
     this.maxzoom = options.maxzoom;
-    this.decodeImage = options.decodeImage || decodeImageImpl;
+    this.decodeImage = options.decodeImage || defaultDecodeImage;
     this.getTile = options.getTile || defaultGetTile;
   }
 
