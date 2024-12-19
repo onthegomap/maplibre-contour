@@ -24,16 +24,15 @@ const defaultGetTile: GetTileFunction = async (
   const options: RequestInit = {
     signal: abortController.signal,
   };
-  return fetch(url, options).then(async (response) => {
-    if (!response.ok) {
-      throw new Error(`Bad response: ${response.status} for ${url}`);
-    }
-    return {
-      data: await response.blob(),
-      expires: response.headers.get("expires") || undefined,
-      cacheControl: response.headers.get("cache-control") || undefined,
-    };
-  });
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    throw new Error(`Bad response: ${response.status} for ${url}`);
+  }
+  return {
+    data: await response.blob(),
+    expires: response.headers.get("expires") || undefined,
+    cacheControl: response.headers.get("cache-control") || undefined,
+  };
 };
 
 /**
