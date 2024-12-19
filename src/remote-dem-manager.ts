@@ -12,6 +12,7 @@ import type {
   IndividualContourTileOptions,
 } from "./types";
 import { prepareDemTile } from "./utils";
+import { PMTiles, FetchSource } from "pmtiles";
 
 let _actor: Actor<WorkerDispatch> | undefined;
 let id = 0;
@@ -40,9 +41,11 @@ export default class RemoteDemManager implements DemManager {
   managerId: number;
   actor: Actor<WorkerDispatch>;
   loaded: Promise<any>;
+  pmtiles: PMTiles | null = null;
+  fileUrl: string;
 
   constructor(
-    demUrlPattern: string,
+    fileUrl: string,
     cacheSize: number,
     encoding: Encoding,
     maxzoom: number,
@@ -50,6 +53,7 @@ export default class RemoteDemManager implements DemManager {
     actor?: Actor<WorkerDispatch>,
   ) {
     const managerId = (this.managerId = ++id);
+    this.fileUrl = fileUrl;
     this.actor = actor || defaultActor();
     this.loaded = this.actor.send(
       "init",
@@ -58,13 +62,18 @@ export default class RemoteDemManager implements DemManager {
       undefined,
       {
         cacheSize,
-        demUrlPattern,
+        fileUrl,
         encoding,
         maxzoom,
         managerId,
         timeoutMs,
       },
     );
+  }
+
+  public async initializePMTiles() {
+    const source = new FetchSource(this.fileUrl);
+    this.pmtiles = new PMTiles(source);
   }
 
   fetchTile = (

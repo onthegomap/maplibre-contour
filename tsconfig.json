@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2016",
+    "target": "es2017",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "strict": true,
     "moduleResolution": "Bundler",
@@ -11,12 +11,13 @@
     "isolatedModules": true,
     "module": "ESNext",
     "esModuleInterop": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "baseUrl": "."
   },
   "ts-node": {
     "experimentalSpecifierResolution": "node",
     "esm": true
   },
-  "include": ["src/*.ts"],
-  "exclude": ["node_modules"]
+   "include": ["src/**/*.ts", "src/**/*.tsx"],
+    "exclude": ["node_modules", "dist", "**/*.test.tsx","**/*.test.ts"]
 }

@@ -78,8 +78,8 @@ export interface Image {
 }
 
 export interface InitMessage {
+  fileUrl: string;
   managerId: number;
-  demUrlPattern: string;
   cacheSize: number;
   encoding: Encoding;
   maxzoom: number;
