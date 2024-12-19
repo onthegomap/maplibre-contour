@@ -1,10 +1,10 @@
-# maplibre-contour
+# maplibre-contour-pmtiles
 
 maplibre-contour-pmtiles is a plugin to render contour lines in [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) from `raster-dem` pmtiles sources. It was forked to support pmtiles with http support on the web and http and local supoort in node.js.
 
 ![Topographic map of Mount Washington](demo.png)
 
-[Live example](https://onthegomap.github.io/maplibre-contour) | [Code](./index.html)
+[Live example](https://acalcutt.github.io/maplibre-contour-pmtiles/) | [Code](https://github.com/acalcutt/maplibre-contour-pmtiles/blob/pages/index.html)
 
 To use it, import the [maplibre-contour](https://www.npmjs.com/package/maplibre-contour) package with a script tag:
 
