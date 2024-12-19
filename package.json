@@ -43,6 +43,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "3.2.0",
     "@eslint/js": "9.16.0",
+    "@mapbox/tilebelt": "^2.0.2",
     "@mapbox/vector-tile": "2.0.3",
     "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-commonjs": "28.0.1",
@@ -57,7 +58,6 @@
     "@types/node": "22.10.2",
     "@types/pbf": "3.0.5",
     "@types/pngjs": "6.0.5",
-    "@mapbox/tilebelt": "^2.0.2",
     "benchmark": "2.1.4",
     "canvas": "^2.11.2",
     "cross-env": "^7.0.3",
@@ -75,6 +75,7 @@
     "ts-jest": "29.2.5",
     "typescript": "5.7.2",
     "typescript-eslint": "8.18.0",
+    "webp-wasm": "^1.0.6",
     "whatwg-fetch": "3.6.20"
   }
 }
