@@ -53,6 +53,7 @@ export default class RemoteDemManager implements DemManager {
     actor?: Actor<WorkerDispatch>,
   ) {
     const managerId = (this.managerId = ++id);
+    this.pmtiles = null;
     this.fileUrl = fileUrl;
     this.actor = actor || defaultActor();
     this.loaded = this.actor.send(
