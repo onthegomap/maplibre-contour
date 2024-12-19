@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import { PMTiles, FetchSource, type Source } from "pmtiles";
 import { PNG } from "pngjs";
-import { decode } from 'webp-wasm'; // Changed import
 import { decodeParsedImage } from "./decode-image";
 import type { Encoding } from "./types";
 
@@ -91,77 +90,17 @@ export async function getPMtilesTile(
   }
 }
 
-function isWebP(buffer: Buffer): boolean {
-    if (buffer.length < 12) {
-        return false; // Too short to be a valid WebP
-    }
-  
-    // Check for "RIFF" at bytes 0-3
-    if (
-      buffer[0] === 0x52 &&
-      buffer[1] === 0x49 &&
-      buffer[2] === 0x46 &&
-      buffer[3] === 0x46
-    ) {
-      // Check for "WEBP" at bytes 8-11
-      if (
-        buffer[8] === 0x57 &&
-        buffer[9] === 0x45 &&
-        buffer[10] === 0x42 &&
-        buffer[11] === 0x50
-      ) {
-        return true; // Found WebP header
-      }
-    }
-    return false; // Not a WebP
-}
-
-
 export async function GetImageData(
-    blob: Blob,
-    encoding: Encoding,
-  ): Promise<any> {
-  
-    const buffer = await blob.arrayBuffer();
-    const bufferAsNodeBuffer = Buffer.from(buffer);
-  
-    if (isWebP(bufferAsNodeBuffer)) {
-        try {
-            const decoded = await decode(bufferAsNodeBuffer);
-            if (!decoded || !decoded.data || decoded.width === 0 || decoded.height === 0) {
-                throw new Error("WebP decoding failed or invalid data");
-            }
-            
-            const parsed = decodeParsedImage(
-                decoded.width,
-                decoded.height,
-                encoding,
-                decoded.data as any as Uint8ClampedArray
-            );
-
-            return parsed;
-
-        } catch (webpError) {
-           // Handle the case when neither PNG nor WebP decoding works
-          console.error("Error decoding WebP:", webpError);
-          throw new Error('Could not decode image as WebP.');
-        }
-    } else {
-         try {
-            // Attempt to decode as PNG 
-            const png = PNG.sync.read(bufferAsNodeBuffer);
-            const parsed = decodeParsedImage(
-              png.width,
-              png.height,
-              encoding,
-              png.data as any as Uint8ClampedArray,
-            );
-            return parsed;
-    
-        } catch (pngError) {
-             // Handle the case when neither PNG nor WebP decoding works
-            console.error("Error decoding PNG:", pngError);
-            throw new Error('Could not decode image as PNG.');
-         }
-    }
+  blob: Blob,
+  encoding: Encoding,
+): Promise<any> {
+  const buffer = await blob.arrayBuffer();
+  const png = PNG.sync.read(Buffer.from(buffer));
+  const parsed = decodeParsedImage(
+    png.width,
+    png.height,
+    encoding,
+    png.data as any as Uint8ClampedArray,
+  );
+  return parsed;
 }
