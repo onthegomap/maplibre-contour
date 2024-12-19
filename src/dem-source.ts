@@ -137,6 +137,7 @@ export class DemSource {
       timeoutMs,
       actor,
     );
+    this.manager.initializePMTiles();
   }
 
   /** Registers a callback to be invoked with a performance report after each tile is requested. */

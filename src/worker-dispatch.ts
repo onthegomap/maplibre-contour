@@ -27,6 +27,7 @@ export default class WorkerDispatch {
       message.maxzoom,
       message.timeoutMs,
     );
+    this.managers[message.managerId].initializePMTiles();
     return Promise.resolve();
   };
 
