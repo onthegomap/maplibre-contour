@@ -43,8 +43,6 @@ export default (args) => {
     ]
   });
 
-  const Plugins = [aliasPlugin, nodeResolve, typescript(), commonjs()];
-
   return [
     {
       input: ["src/index.ts", "src/worker.ts"],
@@ -60,11 +58,11 @@ export default (args) => {
         throw message;
       },
       treeshake: true,
-      plugins: Plugins,
+      plugins: [aliasPlugin, nodeResolve, typescript(), commonjs()],
     },
-    create("dist/maplibre-contour-pmtiles.cjs", "cjs", Plugins),
-    create("dist/maplibre-contour-pmtiles.mjs", "esm", Plugins),
-    create("dist/maplibre-contour-pmtiles.js", "umd", Plugins),
-    create("dist/maplibre-contour-pmtiles.min.js", "umd", [...Plugins, terser()]),
+    create("dist/maplibre-contour-pmtiles.cjs", "cjs"),
+    create("dist/maplibre-contour-pmtiles.mjs", "esm"),
+    create("dist/maplibre-contour-pmtiles.js", "umd"),
+    create("dist/maplibre-contour-pmtiles.min.js", "umd", [terser()]),
   ];
 };

@@ -1,5 +1,8 @@
 import fs from "node:fs";
 import { PMTiles, FetchSource, type Source } from "pmtiles";
+import { PNG } from "pngjs";
+import { decodeParsedImage } from "./decode-image";
+import type { Encoding } from "./types";
 
 const httpTester = /^https?:\/\//i;
 
@@ -85,4 +88,19 @@ export async function getPMtilesTile(
     console.error("Error fetching tile:", error);
     return { data: undefined };
   }
+}
+
+export async function GetImageData(
+  blob: Blob,
+  encoding: Encoding,
+): Promise<any> {
+  const buffer = await blob.arrayBuffer();
+  const png = PNG.sync.read(Buffer.from(buffer));
+  const parsed = decodeParsedImage(
+    png.width,
+    png.height,
+    encoding,
+    png.data as any as Uint8ClampedArray,
+  );
+  return parsed
 }

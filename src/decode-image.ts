@@ -1,3 +1,4 @@
+import { GetImageData } from "./pmtiles-adapter-node";
 import type Actor from "./actor";
 import {
   isAborted,
@@ -7,25 +8,22 @@ import {
 } from "./utils";
 import type { MainThreadDispatch } from "./remote-dem-manager";
 import type { DemTile, Encoding } from "./types";
-import {
-  createCanvas,
-  Canvas,
-  CanvasRenderingContext2D as NodeCanvasRenderingContext2D,
-  loadImage,
-  Image as NodeImage,
-} from "canvas";
 
-// Define a type that encompasses both browser and Node.js CanvasRenderingContext2D types
-type AnyCanvasRenderingContext2D =
-  | CanvasRenderingContext2D
-  | NodeCanvasRenderingContext2D;
-
-type AnyImage = ImageBitmap | HTMLImageElement | NodeImage;
 
 let offscreenCanvas: OffscreenCanvas;
 let offscreenContext: OffscreenCanvasRenderingContext2D | null;
-let canvas: HTMLCanvasElement | Canvas;
-let canvasContext: AnyCanvasRenderingContext2D | null; // use the any type
+let canvas: HTMLCanvasElement;
+let canvasContext: CanvasRenderingContext2D | null;
+
+async function decodeImageNode(
+  blob: Blob,
+  encoding: Encoding,
+  abortController: AbortController,
+): Promise<DemTile> {
+  const img = await GetImageData(blob, encoding);
+  if (isAborted(abortController)) return null as any as DemTile;
+  return img;
+}
 
 /**
  * Parses a `raster-dem` image into a DemTile using Webcoded VideoFrame API.
@@ -127,25 +125,6 @@ async function decodeImageOld(
 }
 
 /**
- * This function is an alternative to decodeImageOld that is compatible with node
- * It will load a image and then use a canvas provided by the 'canvas' library to convert to a DemTile
- * */
-async function decodeImageNode(
-  blob: Blob,
-  encoding: Encoding,
-  abortController: AbortController,
-): Promise<DemTile> {
-  if (!canvas) {
-    canvas = createCanvas(1, 1);
-    canvasContext = canvas.getContext("2d") as NodeCanvasRenderingContext2D;
-  }
-
-  const buffer = await blob.arrayBuffer();
-  const image = (await loadImage(Buffer.from(buffer))) as NodeImage;
-  return getElevations(image, encoding, canvas, canvasContext);
-}
-
-/**
  * Parses a `raster-dem` image in a worker that doesn't support OffscreenCanvas and createImageBitmap
  * by running decodeImageOld on the main thread and returning the result.
  */
@@ -174,36 +153,28 @@ function isWorker(): boolean {
   );
 }
 
-function isNode(): boolean {
-  return (
-    typeof process === "object" &&
-    process.versions != null &&
-    process.versions.node != null
-  );
-}
-
 const defaultDecoder: (
   blob: Blob,
   encoding: Encoding,
   abortController: AbortController,
-) => Promise<DemTile> = isNode()
-  ? decodeImageNode
-  : shouldUseVideoFrame()
-    ? decodeImageVideoFrame
-    : offscreenCanvasSupported()
-      ? decodeImageModern
-      : isWorker()
-        ? decodeImageOnMainThread
-        : decodeImageOld;
+) => Promise<DemTile> = shouldUseVideoFrame()
+  ? decodeImageVideoFrame
+  : offscreenCanvasSupported()
+    ? decodeImageModern
+    : isWorker()
+      ? decodeImageOnMainThread
+      : typeof document !== "undefined"
+        ? decodeImageOld
+        : decodeImageNode;
 
 export default defaultDecoder;
 
 function getElevations(
-  img: any,
+  img: ImageBitmap | HTMLImageElement,
   encoding: Encoding,
-  canvas: HTMLCanvasElement | OffscreenCanvas | Canvas,
+  canvas: HTMLCanvasElement | OffscreenCanvas,
   canvasContext:
-    | AnyCanvasRenderingContext2D
+    | CanvasRenderingContext2D
     | OffscreenCanvasRenderingContext2D
     | null,
 ): DemTile {
@@ -212,32 +183,9 @@ function getElevations(
 
   if (!canvasContext) throw new Error("failed to get context");
 
-  if (isNode()) {
-    // Handle Node.js environment
-    (canvasContext as NodeCanvasRenderingContext2D).drawImage(
-      img,
-      0,
-      0,
-      img.width,
-      img.height,
-    );
-  } else {
-    // Handle browser environment
-    if (img instanceof HTMLImageElement || img instanceof ImageBitmap) {
-      if (canvasContext instanceof CanvasRenderingContext2D) {
-        canvasContext.drawImage(img, 0, 0, img.width, img.height);
-      } else if (canvasContext instanceof OffscreenCanvasRenderingContext2D) {
-        canvasContext.drawImage(img, 0, 0, img.width, img.height);
-      }
-    }
-  }
+  canvasContext.drawImage(img, 0, 0, img.width, img.height);
 
-  const rgba = (canvasContext as CanvasRenderingContext2D).getImageData(
-    0,
-    0,
-    img.width,
-    img.height,
-  ).data;
+  const rgba = canvasContext.getImageData(0, 0, img.width, img.height).data;
   return decodeParsedImage(img.width, img.height, encoding, rgba);
 }
 

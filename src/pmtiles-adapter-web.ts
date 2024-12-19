@@ -1,4 +1,5 @@
 import { PMTiles, FetchSource } from "pmtiles";
+import type { Encoding } from "./types";
 
 export function openPMtiles(FilePath: string): PMTiles {
   const source = new FetchSource(FilePath);
@@ -24,4 +25,13 @@ export async function getPMtilesTile(
     console.error("Error fetching tile:", error);
     return { data: undefined };
   }
+}
+
+export async function GetImageData(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  blob: Blob,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  encoding: Encoding,
+): Promise<undefined> {
+  return undefined;
 }
