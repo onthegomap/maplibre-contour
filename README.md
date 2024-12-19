@@ -1,6 +1,6 @@
 # maplibre-contour
 
-maplibre-contour is a plugin to render contour lines in [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) from `raster-dem` sources that powers the terrain mode for [onthegomap.com](https://onthegomap.com).
+maplibre-contour-pmtiles is a plugin to render contour lines in [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) from `raster-dem` pmtiles sources. It was forked to support pmtiles with http support on the web and http and local supoort in node.js.
 
 ![Topographic map of Mount Washington](demo.png)
 
@@ -22,7 +22,7 @@ Then to use, first create a `DemSource` and register it with maplibre:
 
 ```js
 var demSource = new mlcontour.DemSource({
-  url: "https://url/of/dem/source/{z}/{x}/{y}.png",
+  url: "https://url/of/dem/source.pmtiles",
   encoding: "terrarium", // "mapbox" or "terrarium" default="terrarium"
   maxzoom: 13,
   worker: true, // offload isoline computation to a web worker to reduce jank
