@@ -21,12 +21,13 @@ export default class WorkerDispatch {
 
   init = (message: InitMessage, _: AbortController): Promise<void> => {
     this.managers[message.managerId] = new LocalDemManager(
-      message.demUrlPattern,
+      message.fileUrl,
       message.cacheSize,
       message.encoding,
       message.maxzoom,
       message.timeoutMs,
     );
+    this.managers[message.managerId].initializePMTiles();
     return Promise.resolve();
   };
 

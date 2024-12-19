@@ -1,4 +1,5 @@
 /** Scheme used to map pixel rgb values elevations. */
+export type Tile = [number, number, number];
 export type Encoding = "terrarium" | "mapbox";
 export interface IsTransferrable {
   transferrables: Transferable[];
@@ -78,8 +79,8 @@ export interface Image {
 }
 
 export interface InitMessage {
+  fileUrl: string;
   managerId: number;
-  demUrlPattern: string;
   cacheSize: number;
   encoding: Encoding;
   maxzoom: number;
