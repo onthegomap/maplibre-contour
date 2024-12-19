@@ -9,7 +9,6 @@ import {
 import type { MainThreadDispatch } from "./remote-dem-manager";
 import type { DemTile, Encoding } from "./types";
 
-
 let offscreenCanvas: OffscreenCanvas;
 let offscreenContext: OffscreenCanvasRenderingContext2D | null;
 let canvas: HTMLCanvasElement;

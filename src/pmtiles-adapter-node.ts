@@ -102,5 +102,5 @@ export async function GetImageData(
     encoding,
     png.data as any as Uint8ClampedArray,
   );
-  return parsed
+  return parsed;
 }
