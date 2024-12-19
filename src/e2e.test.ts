@@ -6,6 +6,7 @@ import { MainThreadDispatch } from "./remote-dem-manager";
 import type { DemTile, Timing } from "./types";
 import { VectorTile } from "@mapbox/vector-tile";
 import Pbf from "pbf";
+import { LocalDemManager } from "./local-dem-manager";
 
 beforeEach(() => {
   jest.useFakeTimers({ now: 0, doNotFake: ["performance"] });
@@ -281,4 +282,29 @@ test("decode image from worker", async () => {
     height: 4,
     data: expectedElevations,
   });
+});
+
+test("fake decode image and fetch tile", async () => {
+  const getTileSpy = jest.fn().mockReturnValue(Promise.resolve({}));
+  const demManager = new LocalDemManager({
+    demUrlPattern: "https://example/{z}/{x}/{y}.png",
+    cacheSize: 100,
+    encoding: "terrarium",
+    maxzoom: 11,
+    timeoutMs: 10000,
+    decodeImage: async () => ({
+      width: 4,
+      height: 4,
+      data: expectedElevations,
+    }),
+    getTile: getTileSpy,
+  });
+  const demTile = await demManager.fetchAndParseTile(
+    1,
+    2,
+    3,
+    new AbortController(),
+  );
+  expect(demTile.data).toEqual(expectedElevations);
+  expect(getTileSpy.mock.calls[0][0]).toBe("https://example/1/2/3.png");
 });
