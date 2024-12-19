@@ -78,9 +78,10 @@ export class LocalDemManager implements DemManager {
       url,
       (_, childAbortController) => {
         timer?.fetchTile(url);
+        const mark = timer?.marker("fetch");
         return withTimeout(
           this.timeoutMs,
-          this.getTile(url, childAbortController),
+          this.getTile(url, childAbortController).finally(() => mark?.()),
           childAbortController,
         );
       },
