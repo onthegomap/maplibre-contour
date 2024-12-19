@@ -1,4 +1,4 @@
-import { LocalDemManager } from "./dem-manager";
+import { LocalDemManager } from "./local-dem-manager";
 import { Timer } from "./performance";
 import type {
   ContourTile,
@@ -20,13 +20,7 @@ export default class WorkerDispatch {
   managers: { [id: number]: LocalDemManager } = {};
 
   init = (message: InitMessage, _: AbortController): Promise<void> => {
-    this.managers[message.managerId] = new LocalDemManager(
-      message.demUrlPattern,
-      message.cacheSize,
-      message.encoding,
-      message.maxzoom,
-      message.timeoutMs,
-    );
+    this.managers[message.managerId] = new LocalDemManager(message);
     return Promise.resolve();
   };
 

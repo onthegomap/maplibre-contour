@@ -2,10 +2,11 @@ import Actor from "./actor";
 import CONFIG from "./config";
 import type WorkerDispatch from "./worker-dispatch";
 import decodeImage from "./decode-image";
-import type { DemManager } from "./dem-manager";
 import { Timer } from "./performance";
 import type {
   ContourTile,
+  DemManager,
+  DemManagerInitizlizationParameters,
   DemTile,
   Encoding,
   FetchResponse,
@@ -41,28 +42,17 @@ export default class RemoteDemManager implements DemManager {
   actor: Actor<WorkerDispatch>;
   loaded: Promise<any>;
 
-  constructor(
-    demUrlPattern: string,
-    cacheSize: number,
-    encoding: Encoding,
-    maxzoom: number,
-    timeoutMs: number,
-    actor?: Actor<WorkerDispatch>,
-  ) {
+  constructor(options: DemManagerInitizlizationParameters) {
     const managerId = (this.managerId = ++id);
-    this.actor = actor || defaultActor();
+    this.actor = options.actor || defaultActor();
     this.loaded = this.actor.send(
       "init",
       [],
       new AbortController(),
       undefined,
       {
-        cacheSize,
-        demUrlPattern,
-        encoding,
-        maxzoom,
+        ...options,
         managerId,
-        timeoutMs,
       },
     );
   }
