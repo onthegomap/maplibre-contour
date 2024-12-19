@@ -121,17 +121,17 @@ try {
 
 function getAllTiles(tile: Tile, maxZoom: number): Tile[] {
   let allTiles: Tile[] = [tile]; // Initialize with the input tile
-  
+
   function getTileList(tile: Tile) {
-      const children: Tile[] = getChildren(tile);
-      allTiles = allTiles.concat(children);
-      if (children.length === 0 || children[0][2] >= maxZoom) return;
-      children.forEach(getTileList);
-    }
-    
-    getTileList(tile);
-    
-    return allTiles;
+    const children: Tile[] = getChildren(tile);
+    allTiles = allTiles.concat(children);
+    if (children.length === 0 || children[0][2] >= maxZoom) return;
+    children.forEach(getTileList);
+  }
+
+  getTileList(tile);
+
+  return allTiles;
 }
 
 async function processTile(v: Tile): Promise<void> {
@@ -140,7 +140,7 @@ async function processTile(v: Tile): Promise<void> {
   const y: number = v[1];
   const dirPath: string = path.join(oDir, `${z}`, `${x}`);
   const filePath: string = path.join(dirPath, `${y}.pbf`);
-  
+
   return manager
     .fetchContourTile(z, x, y, { levels: [increment] }, new AbortController())
     .then((tile) => {
@@ -164,11 +164,11 @@ async function processQueue(
   for (let i = 0; i < queue.length; i += batchSize) {
     const batch = queue.slice(i, i + batchSize);
     console.log(
-      `Processing batch ${i / batchSize + 1} of ${Math.ceil(queue.length / batchSize,)} of tile ${z}/${x}/${y}`,
+      `Processing batch ${i / batchSize + 1} of ${Math.ceil(queue.length / batchSize)} of tile ${z}/${x}/${y}`,
     );
     await Promise.all(batch.map(processTile));
     console.log(
-      `Processed batch ${i / batchSize + 1} of ${Math.ceil(queue.length / batchSize,)} of tile ${z}/${x}/${y}`,
+      `Processed batch ${i / batchSize + 1} of ${Math.ceil(queue.length / batchSize)} of tile ${z}/${x}/${y}`,
     );
   }
 }
