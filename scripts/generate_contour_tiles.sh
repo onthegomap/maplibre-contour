@@ -51,11 +51,9 @@ parse_arguments() {
     usage
     exit 1 # Return non-zero on error
   fi
-    
-  # Set verbose variable as export for subprocesses
-  export verbose
+
   # Return the values as a single string
-  echo "$oMinZoom $sFile $oDir $increment $sMaxZoom $sEncoding $oMaxZoom"
+  echo "$oMinZoom $sFile $oDir $increment $sMaxZoom $sEncoding $oMaxZoom $verbose"
   return 0 # return zero for success
 }
 
@@ -84,19 +82,16 @@ oMinZoom="$oMinZoom_default"
 
 
 process_tile() {
-  local zoom_level="$6"
-  local x_coord="$7"
-  local y_coord="$8"
-  local sFile="$0"
-  local oDir="$1"
-  local increment="$2"
-  local sMaxZoom="$3"
-  local sEncoding="$4"
-  local oMaxZoom="$5"
+  local programOptions="$0"
+  local zoom_level="$1"
+  local x_coord="$2"
+  local y_coord="$3"
+
+  read oMinZoom sFile oDir increment sMaxZoom sEncoding oMaxZoom verbose <<< "$programOptions"
 
 
   if [[ "$verbose" = "true" ]]; then
-    echo "process_tile: [START] Processing tile - Zoom: $zoom_level, X: $x_coord, Y: $y_coord"
+    echo "process_tile: [START] Processing tile - Zoom: $zoom_level, X: $x_coord, Y: $y_coord, oMaxZoom: $oMaxZoom"
   fi
 
   npx tsx ../src/generate-countour-tile-batch.ts \
@@ -119,17 +114,6 @@ export -f process_tile
 # Function to generate tile coordinates and output them as a single space delimited string variable.
 generate_tile_coordinates() {
   local zoom_level=$1
-    
-  if [[ "$verbose" = "true" ]]; then
-    echo "generate_tile_coordinates: [START] Generating coordinates for zoom level $zoom_level"
-  fi
-
-  # Input Validation
-  if [[ "$zoom_level" -lt 0 ]]; then
-    echo "Error: Invalid zoom level. zoomLevel must be >= 0" >&2
-    return 1
-  fi
-
   local tiles_in_dimension=$(echo "2^$zoom_level" | bc)
 
   local output=""
@@ -140,30 +124,21 @@ generate_tile_coordinates() {
     done
   done
 
-  # Assign the output variable to the bash variable named RETVAL.
-  # this is a common trick in bash, if you want to return a variable from a function.
-  declare RETVAL="$output"
-
-  # Output the string to standard output, in case it needs to be piped to another function
   echo -n "$output"
-  if [[ "$verbose" = "true" ]]; then
-    echo "generate_tile_coordinates: [END] Generated coordinates for zoom level $zoom_level"
-  fi
-
-  return 0
+  return 
 }
 
 # --- Main Script ---
 # Parse arguments and validate, getting the min zoom level
 
-returnString=$(parse_arguments "$@")
+programOptions=$(parse_arguments "$@")
 ret=$? # capture exit status
 if [[ "$ret" -ne 0 ]]; then
   exit "$ret"
 fi
 
-# Assign the returnString to the variables
-read oMinZoom sFile oDir increment sMaxZoom sEncoding oMaxZoom <<< "$returnString"
+# Assign the program options to the variables
+read oMinZoom sFile oDir increment sMaxZoom sEncoding oMaxZoom verbose <<< "$programOptions"
 
 echo "Source File: $sFile"
 echo "Source Max Zoom: $sMaxZoom"
@@ -181,7 +156,7 @@ if [[ $? -eq 0 ]]; then
   if [[ "$verbose" = "true" ]]; then
   echo "Main: [INFO] Starting tile processing for zoom level $oMinZoom"
   fi
-  echo "$tile_coords_str" | xargs -P 8 -n 3 bash -c 'process_tile "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"'  "$sFile" "$oDir" "$increment" "$sMaxZoom" "$sEncoding" "$oMaxZoom"
+  echo "$tile_coords_str" | xargs -P 8 -n 3 bash -c 'process_tile "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9"'  "$programOptions"
   if [[ "$verbose" = "true" ]]; then
   echo "Main: [INFO] Finished tile processing for zoom level $oMinZoom"
   fi
