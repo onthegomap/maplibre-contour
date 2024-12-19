@@ -72,12 +72,12 @@ export async function getPMtilesTile(
   z: number,
   x: number,
   y: number,
-): Promise<{ data: Buffer | undefined }> {
+): Promise<{ data: ArrayBuffer | undefined }> {
   try {
     const zxyTile = await pmtiles.getZxy(z, x, y);
 
     if (zxyTile && zxyTile.data) {
-      return { data: Buffer.from(zxyTile.data) };
+      return { data: zxyTile.data };
     } else {
       return { data: undefined };
     }
