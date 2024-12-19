@@ -1,7 +1,12 @@
 import { LocalDemManager } from "./local-dem-manager";
 import { decodeOptions, encodeOptions, getOptionsForZoom } from "./utils";
 import RemoteDemManager from "./remote-dem-manager";
-import type { DemManager, DemTile, GlobalContourTileOptions, Timing } from "./types";
+import type {
+  DemManager,
+  DemTile,
+  GlobalContourTileOptions,
+  Timing,
+} from "./types";
 import type WorkerDispatch from "./worker-dispatch";
 import Actor from "./actor";
 import { Timer } from "./performance";

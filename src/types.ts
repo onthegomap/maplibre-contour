@@ -81,7 +81,6 @@ export interface Image {
   data: Uint8Array;
 }
 
-
 export type TimingCategory = "main" | "worker" | "fetch" | "decode" | "isoline";
 
 /** Performance profile for a tile request */
@@ -141,9 +140,16 @@ export interface DemManager {
   ): Promise<ContourTile>;
 }
 
-export type GetTileFunction = (url: string, abortController: AbortController) => Promise<FetchResponse>;
+export type GetTileFunction = (
+  url: string,
+  abortController: AbortController,
+) => Promise<FetchResponse>;
 
-export type DecodeImageFunction = (blob: Blob, encoding: Encoding, abortController: AbortController) => Promise<DemTile>;
+export type DecodeImageFunction = (
+  blob: Blob,
+  encoding: Encoding,
+  abortController: AbortController,
+) => Promise<DemTile>;
 
 export type DemManagerRequiredInitizlizationParameters = {
   demUrlPattern: string;
@@ -151,14 +157,15 @@ export type DemManagerRequiredInitizlizationParameters = {
   encoding: Encoding;
   maxzoom: number;
   timeoutMs: number;
-}
+};
 
-export type DemManagerInitizlizationParameters = DemManagerRequiredInitizlizationParameters & {
-  decodeImage?: DecodeImageFunction;
-  getTile?: GetTileFunction;
-  actor?: Actor<WorkerDispatch>;
-}
+export type DemManagerInitizlizationParameters =
+  DemManagerRequiredInitizlizationParameters & {
+    decodeImage?: DecodeImageFunction;
+    getTile?: GetTileFunction;
+    actor?: Actor<WorkerDispatch>;
+  };
 
 export type InitMessage = DemManagerRequiredInitizlizationParameters & {
   managerId: number;
-}
+};

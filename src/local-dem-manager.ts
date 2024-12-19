@@ -17,7 +17,10 @@ import type {
 import encodeVectorTile, { GeomType } from "./vtpbf";
 import { Timer } from "./performance";
 
-const defaultGetTile: GetTileFunction = async (url: string, abortController: AbortController) => {
+const defaultGetTile: GetTileFunction = async (
+  url: string,
+  abortController: AbortController,
+) => {
   const options: RequestInit = {
     signal: abortController.signal,
   };
@@ -31,7 +34,7 @@ const defaultGetTile: GetTileFunction = async (url: string, abortController: Abo
       cacheControl: response.headers.get("cache-control") || undefined,
     };
   });
-}
+};
 
 /**
  * Caches, decodes, and processes raster tiles in the current thread.
