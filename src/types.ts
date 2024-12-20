@@ -151,7 +151,7 @@ export type DecodeImageFunction = (
   abortController: AbortController,
 ) => Promise<DemTile>;
 
-export type DemManagerRequiredInitizlizationParameters = {
+export type DemManagerRequiredInitializationParameters = {
   demUrlPattern: string;
   cacheSize: number;
   encoding: Encoding;
@@ -160,12 +160,12 @@ export type DemManagerRequiredInitizlizationParameters = {
 };
 
 export type DemManagerInitizlizationParameters =
-  DemManagerRequiredInitizlizationParameters & {
+  DemManagerRequiredInitializationParameters & {
     decodeImage?: DecodeImageFunction;
     getTile?: GetTileFunction;
     actor?: Actor<WorkerDispatch>;
   };
 
-export type InitMessage = DemManagerRequiredInitizlizationParameters & {
+export type InitMessage = DemManagerRequiredInitializationParameters & {
   managerId: number;
 };
