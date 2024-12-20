@@ -1,47 +1,39 @@
 import AsyncCache from "./cache";
-import decodeImage from "./decode-image";
+import defaultDecodeImage from "./decode-image";
 import { HeightTile } from "./height-tile";
 import generateIsolines from "./isolines";
 import { encodeIndividualOptions, isAborted, withTimeout } from "./utils";
 import type {
   ContourTile,
+  DecodeImageFunction,
+  DemManager,
+  DemManagerInitizlizationParameters,
   DemTile,
   Encoding,
   FetchResponse,
+  GetTileFunction,
   IndividualContourTileOptions,
 } from "./types";
 import encodeVectorTile, { GeomType } from "./vtpbf";
 import { Timer } from "./performance";
 
-/**
- * Holds cached tile state, and exposes `fetchContourTile` which fetches the necessary
- * tiles and returns an encoded contour vector tiles.
- */
-export interface DemManager {
-  loaded: Promise<any>;
-  fetchTile(
-    z: number,
-    x: number,
-    y: number,
-    abortController: AbortController,
-    timer?: Timer,
-  ): Promise<FetchResponse>;
-  fetchAndParseTile(
-    z: number,
-    x: number,
-    y: number,
-    abortController: AbortController,
-    timer?: Timer,
-  ): Promise<DemTile>;
-  fetchContourTile(
-    z: number,
-    x: number,
-    y: number,
-    options: IndividualContourTileOptions,
-    abortController: AbortController,
-    timer?: Timer,
-  ): Promise<ContourTile>;
-}
+const defaultGetTile: GetTileFunction = async (
+  url: string,
+  abortController: AbortController,
+) => {
+  const options: RequestInit = {
+    signal: abortController.signal,
+  };
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    throw new Error(`Bad response: ${response.status} for ${url}`);
+  }
+  return {
+    data: await response.blob(),
+    expires: response.headers.get("expires") || undefined,
+    cacheControl: response.headers.get("cache-control") || undefined,
+  };
+};
 
 /**
  * Caches, decodes, and processes raster tiles in the current thread.
@@ -55,26 +47,19 @@ export class LocalDemManager implements DemManager {
   maxzoom: number;
   timeoutMs: number;
   loaded = Promise.resolve();
-  decodeImage: (
-    blob: Blob,
-    encoding: Encoding,
-    abortController: AbortController,
-  ) => Promise<DemTile> = decodeImage;
+  decodeImage: DecodeImageFunction;
+  getTile: GetTileFunction;
 
-  constructor(
-    demUrlPattern: string,
-    cacheSize: number,
-    encoding: Encoding,
-    maxzoom: number,
-    timeoutMs: number,
-  ) {
-    this.tileCache = new AsyncCache(cacheSize);
-    this.parsedCache = new AsyncCache(cacheSize);
-    this.contourCache = new AsyncCache(cacheSize);
-    this.timeoutMs = timeoutMs;
-    this.demUrlPattern = demUrlPattern;
-    this.encoding = encoding;
-    this.maxzoom = maxzoom;
+  constructor(options: DemManagerInitizlizationParameters) {
+    this.tileCache = new AsyncCache(options.cacheSize);
+    this.parsedCache = new AsyncCache(options.cacheSize);
+    this.contourCache = new AsyncCache(options.cacheSize);
+    this.timeoutMs = options.timeoutMs;
+    this.demUrlPattern = options.demUrlPattern;
+    this.encoding = options.encoding;
+    this.maxzoom = options.maxzoom;
+    this.decodeImage = options.decodeImage || defaultDecodeImage;
+    this.getTile = options.getTile || defaultGetTile;
   }
 
   fetchTile(
@@ -92,24 +77,11 @@ export class LocalDemManager implements DemManager {
     return this.tileCache.get(
       url,
       (_, childAbortController) => {
-        const options: RequestInit = {
-          signal: childAbortController.signal,
-        };
         timer?.fetchTile(url);
         const mark = timer?.marker("fetch");
         return withTimeout(
           this.timeoutMs,
-          fetch(url, options).then(async (response) => {
-            mark?.();
-            if (!response.ok) {
-              throw new Error(`Bad response: ${response.status} for ${url}`);
-            }
-            return {
-              data: await response.blob(),
-              expires: response.headers.get("expires") || undefined,
-              cacheControl: response.headers.get("cache-control") || undefined,
-            };
-          }),
+          this.getTile(url, childAbortController).finally(() => mark?.()),
           childAbortController,
         );
       },
