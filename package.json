@@ -69,7 +69,7 @@
     "rollup": "4.28.1",
     "ts-jest": "29.2.5",
     "typescript": "5.7.2",
-    "typescript-eslint": "8.18.1",
+    "typescript-eslint": "8.18.2",
     "whatwg-fetch": "3.6.20"
   }
 }
