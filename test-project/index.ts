@@ -12,7 +12,7 @@ demSource.setupMaplibre(maplibregl);
 
 const map = new maplibregl.Map({
   container: "map",
-  zoom: 12.55,
+  zoom: 11.55,
   center: [11.39085, 47.27574],
   hash: true,
   style: {

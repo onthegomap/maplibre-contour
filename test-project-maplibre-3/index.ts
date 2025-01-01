@@ -2,9 +2,9 @@ import mlcontour from "maplibre-contour";
 import maplibregl from "maplibre-gl";
 
 const demSource = new mlcontour.DemSource({
-  url: "https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png",
-  encoding: "terrarium",
-  maxzoom: 13,
+  url: "https://acalcutt.github.io/maplibre-contour-pmtiles/pmtiles/terrain-tiles.pmtiles",
+  encoding: "mapbox",
+  maxzoom: 12,
 });
 
 // calls maplibregl.addProtocol for the shared cache and contour protocols
@@ -12,8 +12,8 @@ demSource.setupMaplibre(maplibregl);
 
 const map = new maplibregl.Map({
   container: "map",
-  zoom: 12.55,
-  center: [86.92731, 27.97797],
+  zoom: 11.55,
+  center: [11.39085, 47.27574],
   hash: true,
   style: {
     version: 8,
@@ -21,9 +21,9 @@ const map = new maplibregl.Map({
     sources: {
       dem: {
         type: "raster-dem",
-        encoding: "terrarium",
+        encoding: "mapbox",
         tiles: [demSource.sharedDemProtocolUrl], // share cached DEM tiles with contour layer
-        maxzoom: 13,
+        maxzoom: 12,
         tileSize: 256,
       },
       contours: {
