@@ -9,7 +9,7 @@ maplibre-contour-pmtiles is a plugin to render contour lines in [MapLibre GL JS]
 To use it, import the [maplibre-contour](https://www.npmjs.com/package/maplibre-contour) package with a script tag:
 
 ```html
-<script src="https://unpkg.com/maplibre-contour@0.0.8/dist/index.min.js"></script>
+<script src="https://unpkg.com/@acalcutt/maplibre-contour-pmtiles@0.0.1/dist/maplibre-contour-pmtiles.min.js"></script>
 ```
 
 Or as an ES6 module: `npm add maplibre-contour`
