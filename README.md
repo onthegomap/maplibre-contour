@@ -4,8 +4,8 @@ maplibre-contour-pmtiles is a plugin to render contour lines in [MapLibre GL JS]
 
 ![Topographic map of Mount Washington](demo.png)
 
-[Live example #1](https://acalcutt.github.io/maplibre-contour-pmtiles/) | [Code](https://github.com/acalcutt/maplibre-contour-pmtiles/blob/pages/index.html)
-[Live example #2 w/ OpenMapTiles Style](https://acalcutt.github.io/maplibre-contour-pmtiles/omt.html) | [Code](https://github.com/acalcutt/maplibre-contour-pmtiles/blob/pages/omt.html)  | [Style](https://acalcutt.github.io/maplibre-contour-pmtiles/styles/osm-bright-gl-style/style.json) 
+[Live example #1 (Just Terrain)](https://acalcutt.github.io/maplibre-contour-pmtiles/) | [Code](https://github.com/acalcutt/maplibre-contour-pmtiles/blob/pages/index.html)  
+[Live example #2 (w/ OpenMapTiles Style)](https://acalcutt.github.io/maplibre-contour-pmtiles/omt.html) | [Code](https://github.com/acalcutt/maplibre-contour-pmtiles/blob/pages/omt.html)  | [Style](https://acalcutt.github.io/maplibre-contour-pmtiles/styles/osm-bright-gl-style/style.json) 
 
 To use it, import the [@acalcutt/maplibre-contour-pmtiles](https://www.npmjs.com/package/@acalcutt/maplibre-contour-pmtiles) package with a script tag:
 
