@@ -6,16 +6,16 @@ maplibre-contour-pmtiles is a plugin to render contour lines in [MapLibre GL JS]
 
 [Live example](https://acalcutt.github.io/maplibre-contour-pmtiles/) | [Code](https://github.com/acalcutt/maplibre-contour-pmtiles/blob/pages/index.html)
 
-To use it, import the [maplibre-contour](https://www.npmjs.com/package/maplibre-contour) package with a script tag:
+To use it, import the [@acalcutt/maplibre-contour-pmtiles](https://www.npmjs.com/package/@acalcutt/maplibre-contour-pmtiles) package with a script tag:
 
 ```html
 <script src="https://unpkg.com/@acalcutt/maplibre-contour-pmtiles@0.0.1/dist/maplibre-contour-pmtiles.min.js"></script>
 ```
 
-Or as an ES6 module: `npm add maplibre-contour`
+Or as an ES6 module: `npm add @acalcutt/maplibre-contour-pmtiles`
 
 ```js
-import mlcontour from "maplibre-contour";
+import mlcontour from "@acalcutt/maplibre-contour-pmtiles";
 ```
 
 Then to use, first create a `DemSource` and register it with maplibre:
@@ -126,7 +126,8 @@ There are a lot of parameters you can tweak when generating contour lines from e
 
 # License
 
-maplibre-contour is licensed under the [BSD 3-Clause License](LICENSE). It includes code adapted from:
+maplibre-contour-pmtiles is licensed under the [BSD 3-Clause License](LICENSE). It includes code adapted from:
 
 - [d3-contour](https://github.com/d3/d3-contour) (ISC license)
 - [vt-pbf](https://github.com/mapbox/vt-pbf) (MIT license)
+- [PMTiles](https://github.com/protomaps/PMTiles) (BSD 3-Clause license)
