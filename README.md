@@ -1,29 +1,28 @@
-# maplibre-contour-pmtiles
+# maplibre-contour
 
-maplibre-contour-pmtiles is a plugin to render contour lines in [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) from `raster-dem` pmtiles sources. It was forked to support pmtiles with http support on the web and http and local supoort in node.js.
+maplibre-contour is a plugin to render contour lines in [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) from `raster-dem` sources that powers the terrain mode for [onthegomap.com](https://onthegomap.com).
 
 ![Topographic map of Mount Washington](demo.png)
 
-[Live example #1 (Just Terrain)](https://acalcutt.github.io/maplibre-contour-pmtiles/) | [Code](https://github.com/acalcutt/maplibre-contour-pmtiles/blob/pages/index.html)  
-[Live example #2 (w/ OpenMapTiles Style)](https://acalcutt.github.io/maplibre-contour-pmtiles/omt.html) | [Code](https://github.com/acalcutt/maplibre-contour-pmtiles/blob/pages/omt.html)  | [Style](https://acalcutt.github.io/maplibre-contour-pmtiles/styles/osm-bright-gl-style/style.json) 
+[Live example](https://onthegomap.github.io/maplibre-contour) | [Code](./index.html)
 
-To use it, import the [@acalcutt/maplibre-contour-pmtiles](https://www.npmjs.com/package/@acalcutt/maplibre-contour-pmtiles) package with a script tag:
+To use it, import the [maplibre-contour](https://www.npmjs.com/package/maplibre-contour) package with a script tag:
 
 ```html
-<script src="https://unpkg.com/@acalcutt/maplibre-contour-pmtiles@0.0.1/dist/maplibre-contour-pmtiles.min.js"></script>
+<script src="https://unpkg.com/maplibre-contour@0.1.0/dist/index.min.js"></script>
 ```
 
-Or as an ES6 module: `npm add @acalcutt/maplibre-contour-pmtiles`
+Or as an ES6 module: `npm add maplibre-contour`
 
 ```js
-import mlcontour from "@acalcutt/maplibre-contour-pmtiles";
+import mlcontour from "maplibre-contour";
 ```
 
 Then to use, first create a `DemSource` and register it with maplibre:
 
 ```js
 var demSource = new mlcontour.DemSource({
-  url: "https://url/of/dem/source.pmtiles",
+  url: "https://url/of/dem/source/{z}/{x}/{y}.png",
   encoding: "terrarium", // "mapbox" or "terrarium" default="terrarium"
   maxzoom: 13,
   worker: true, // offload isoline computation to a web worker to reduce jank
@@ -127,8 +126,7 @@ There are a lot of parameters you can tweak when generating contour lines from e
 
 # License
 
-maplibre-contour-pmtiles is licensed under the [BSD 3-Clause License](LICENSE). It includes code adapted from:
+maplibre-contour is licensed under the [BSD 3-Clause License](LICENSE). It includes code adapted from:
 
 - [d3-contour](https://github.com/d3/d3-contour) (ISC license)
 - [vt-pbf](https://github.com/mapbox/vt-pbf) (MIT license)
-- [PMTiles](https://github.com/protomaps/PMTiles) (BSD 3-Clause license)
