@@ -260,9 +260,9 @@ test("e2e contour tile", async () => {
       isoline: [[7, 7, 7]],
     },
     resources: [
-      { duration: 1, startTime: 7, name: "https://example/10/22/29.png" },
-      { duration: 1, startTime: 7, name: "https://example/10/22/30.png" },
-      { duration: 1, startTime: 7, name: "https://example/10/22/31.png" },
+      { duration: 1, startTime: 7, name: "10/22/29" },
+      { duration: 1, startTime: 7, name: "10/22/30" },
+      { duration: 1, startTime: 7, name: "10/22/31" },
     ],
     url: "dem-contour://10/21/30?overzoom=0&thresholds=10*10",
   });
@@ -306,5 +306,8 @@ test("fake decode image and fetch tile", async () => {
     new AbortController(),
   );
   expect(demTile.data).toEqual(expectedElevations);
-  expect(getTileSpy.mock.calls[0][0]).toBe("https://example/1/2/3.png");
+  expect(getTileSpy.mock.calls[0][0]).toBe(1);
+  expect(getTileSpy.mock.calls[0][1]).toBe(2);
+  expect(getTileSpy.mock.calls[0][2]).toBe(3);
+  expect(getTileSpy.mock.calls[0][3]).toBe("https://example/{z}/{x}/{y}.png");
 });
