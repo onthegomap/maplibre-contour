@@ -130,12 +130,12 @@ export class LocalDemManager implements DemManager {
     parentAbortController: AbortController,
     timer?: Timer,
   ): Promise<FetchResponse> {
-    const url = `${z}/${x}/${y}`;
-    timer?.useTile(url);
+    const cacheKey = `${z}/${x}/${y}`;
+    timer?.useTile(cacheKey);
     return this.tileCache.get(
-      url,
+      cacheKey,
       (_, childAbortController) => {
-        timer?.fetchTile(url);
+        timer?.fetchTile(cacheKey);
         const mark = timer?.marker("fetch");
 
         return withTimeout(
@@ -175,11 +175,11 @@ export class LocalDemManager implements DemManager {
   ): Promise<DemTile> => {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
-    const url = `${z}/${x}/${y}`;
-    timer?.useTile(url);
+    const cacheKey = `${z}/${x}/${y}`;
+    timer?.useTile(cacheKey);
 
     return this.parsedCache.get(
-      url,
+      cacheKey,
       async (_, childAbortController) => {
         const response = await self.fetchTile(
           z,
