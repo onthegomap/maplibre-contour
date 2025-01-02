@@ -1,5 +1,5 @@
 import { writeFileSync, mkdir } from "fs";
-import { LocalDemManager } from "./dem-manager";
+import { LocalDemManager } from "./local-dem-manager";
 import { getChildren } from "@mapbox/tilebelt";
 import type { Tile, Encoding } from "./types";
 import path from "path";
