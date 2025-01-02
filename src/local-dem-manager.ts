@@ -49,7 +49,7 @@ const defaultPMtilesGetTile: GetTileFunction = async (
   z: number,
   x: number,
   y: number,
-  demUrlPattern: string,
+  _demUrlPattern: string,
   parentAbortController: AbortController,
   pmtiles?: PMTiles | null,
 ) => {

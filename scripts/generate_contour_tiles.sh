@@ -1,17 +1,18 @@
 #!/bin/bash
 
-# Default Values (except sFile and oDir)
-increment_default=10
+# Default Values (except demUrl and oDir)
+increment_default=0
 sMaxZoom_default=8
 sEncoding_default="mapbox"
 oMaxZoom_default=8
 oMinZoom_default=5
+oDir_default=./output
 
 # Function to parse command line arguments
 parse_arguments() {
   local verbose=false
-  local sFile=""
-  local oDir=""
+  local demUrl=""
+  local oDir="$oDir_default"
   local increment="$increment_default"
   local sMaxZoom="$sMaxZoom_default"
   local sEncoding="$sEncoding_default"
@@ -24,7 +25,7 @@ parse_arguments() {
     --increment) increment="$2"; shift 2 ;;
     --sMaxZoom) sMaxZoom="$2"; shift 2 ;;
     --sEncoding) sEncoding="$2"; shift 2 ;;
-    --sFile) sFile="$2"; shift 2 ;;
+    --demUrl) demUrl="$2"; shift 2 ;;
     --oDir) oDir="$2"; shift 2 ;;
     --oMaxZoom) oMaxZoom="$2"; shift 2 ;;
     --oMinZoom) oMinZoom="$2"; shift 2 ;;    
@@ -33,14 +34,9 @@ parse_arguments() {
     esac
   done
 
-  # Check if sFile and oDir are provided
-  if [[ -z "$sFile" ]]; then
-    echo "Error: --sFile is required." >&2
-    usage
-    exit 1 # Return non-zero on error
-  fi
-  if [[ -z "$oDir" ]]; then
-    echo "Error: --oDir is required." >&2
+  # Check if demUrl and oDir are provided
+  if [[ -z "$demUrl" ]]; then
+    echo "Error: --demUrl is required." >&2
     usage
     exit 1 # Return non-zero on error
   fi
@@ -53,18 +49,18 @@ parse_arguments() {
   fi
 
   # Return the values as a single string
-  echo "$oMinZoom $sFile $oDir $increment $sMaxZoom $sEncoding $oMaxZoom $verbose"
+  echo "$oMinZoom $demUrl $oDir $increment $sMaxZoom $sEncoding $oMaxZoom $verbose"
   return 0 # return zero for success
 }
 
 usage() {
-  echo "Usage: $0 --sFile <path> --oDir <path> [options]" >&2
+  echo "Usage: $0 --demUrl <path> [options]" >&2
   echo " Options:" >&2
   echo "  --increment <value> Increment value (default: $increment_default)" >&2
   echo "  --sMaxZoom <value> Source Max Zoom (default: $sMaxZoom_default)" >&2
   echo "  --sEncoding <encoding> Source Encoding (default: $sEncoding_default) (must be 'mapbox' or 'terrarium')" >&2
-  echo "  --sFile <path>  TerrainRGB or Terrarium PMTiles File Path or URL (REQUIRED)" >&2
-  echo "  --oDir <path>  Output Directory (REQUIRED)" >&2
+  echo "  --demUrl <path>  TerrainRGB or Terrarium PMTiles https:// URL or pmtiles:// URL (REQUIRED)" >&2
+  echo "  --oDir <path>  Output Directory (default: $oDir_default)" >&2
   echo "  --oMaxZoom <value> Output Max Zoom (default: $oMaxZoom_default)" >&2
   echo "  --oMinZoom <value> Output Min Zoom (default: $oMinZoom_default)" >&2
   echo "  -v|--verbose  Enable verbose output" >&2
@@ -72,8 +68,8 @@ usage() {
 }
 
 # Initialize with defaults
-sFile=""
-oDir=""
+demUrl=""
+oDir="$oDir_default"
 increment="$increment_default"
 sMaxZoom="$sMaxZoom_default"
 sEncoding="$sEncoding_default"
@@ -87,18 +83,19 @@ process_tile() {
   local x_coord="$2"
   local y_coord="$3"
 
-  read oMinZoom sFile oDir increment sMaxZoom sEncoding oMaxZoom verbose <<< "$programOptions"
+  read oMinZoom demUrl oDir increment sMaxZoom sEncoding oMaxZoom verbose <<< "$programOptions"
 
 
   if [[ "$verbose" = "true" ]]; then
     echo "process_tile: [START] Processing tile - Zoom: $zoom_level, X: $x_coord, Y: $y_coord, oMaxZoom: $oMaxZoom"
   fi
+  
 
   npx tsx ../src/generate-countour-tile-batch.ts \
     --x "$x_coord" \
     --y "$y_coord" \
     --z "$zoom_level" \
-    --sFile "$sFile" \
+    --demUrl "$demUrl" \
     --sEncoding "$sEncoding" \
     --sMaxZoom "$sMaxZoom" \
     --increment "$increment" \
@@ -138,9 +135,9 @@ if [[ "$ret" -ne 0 ]]; then
 fi
 
 # Assign the program options to the variables
-read oMinZoom sFile oDir increment sMaxZoom sEncoding oMaxZoom verbose <<< "$programOptions"
+read oMinZoom demUrl oDir increment sMaxZoom sEncoding oMaxZoom verbose <<< "$programOptions"
 
-echo "Source File: $sFile"
+echo "Source File: $demUrl"
 echo "Source Max Zoom: $sMaxZoom"
 echo "Source Encoding: $sEncoding"
 echo "Output Directory: $oDir"

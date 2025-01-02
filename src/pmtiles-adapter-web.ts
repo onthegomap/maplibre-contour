@@ -28,10 +28,9 @@ export async function getPMtilesTile(
 }
 
 export async function GetImageData(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  blob: Blob,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  encoding: Encoding,
+  _blob: Blob,
+  _encoding: Encoding,
+  _abortController: AbortController,
 ): Promise<undefined> {
   return undefined;
 }
