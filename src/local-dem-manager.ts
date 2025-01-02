@@ -3,6 +3,7 @@ import defaultDecodeImage from "./decode-image";
 import { HeightTile } from "./height-tile";
 import generateIsolines from "./isolines";
 import { encodeIndividualOptions, isAborted, withTimeout } from "./utils";
+import { PMTiles, FetchSource } from "pmtiles";
 import type {
   ContourTile,
   DecodeImageFunction,
@@ -18,9 +19,17 @@ import encodeVectorTile, { GeomType } from "./vtpbf";
 import { Timer } from "./performance";
 
 const defaultGetTile: GetTileFunction = async (
-  url: string,
+  z: number,
+  x: number,
+  y: number,
+  demUrlPattern: string,
   abortController: AbortController,
 ) => {
+  const url = demUrlPattern
+    .replace("{z}", z.toString())
+    .replace("{x}", x.toString())
+    .replace("{y}", y.toString());
+
   const options: RequestInit = {
     signal: abortController.signal,
   };
@@ -33,6 +42,39 @@ const defaultGetTile: GetTileFunction = async (
     expires: response.headers.get("expires") || undefined,
     cacheControl: response.headers.get("cache-control") || undefined,
   };
+};
+
+const defaultPMtilesGetTile: GetTileFunction = async (
+  z: number,
+  x: number,
+  y: number,
+  _demUrlPattern: string,
+  parentAbortController: AbortController,
+  pmtiles?: PMTiles | null,
+) => {
+  if (!pmtiles) {
+    throw new Error("pmtiles is not initialized.");
+  }
+  if (parentAbortController.signal.aborted) {
+    throw new Error("Request aborted by parent.");
+  }
+  try {
+    const zxyTile = await pmtiles.getZxy(z, x, y);
+    if (zxyTile && zxyTile.data) {
+      const blob = new Blob([zxyTile.data]);
+      return {
+        data: blob,
+        expires: undefined,
+        cacheControl: undefined,
+      };
+    } else {
+      throw new Error(`Tile data not found for z:${z} x:${x} y:${y}`);
+    }
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch DEM tile for z:${z} x:${x} y:${y} from PMTiles: ${error}`,
+    );
+  }
 };
 
 /**
@@ -49,6 +91,7 @@ export class LocalDemManager implements DemManager {
   loaded = Promise.resolve();
   decodeImage: DecodeImageFunction;
   getTile: GetTileFunction;
+  pmtiles: PMTiles | null = null;
 
   constructor(options: DemManagerInitizlizationParameters) {
     this.tileCache = new AsyncCache(options.cacheSize);
@@ -59,7 +102,23 @@ export class LocalDemManager implements DemManager {
     this.encoding = options.encoding;
     this.maxzoom = options.maxzoom;
     this.decodeImage = options.decodeImage || defaultDecodeImage;
-    this.getTile = options.getTile || defaultGetTile;
+
+    if (this.demUrlPattern.startsWith("pmtiles://")) {
+      try {
+        const source = new FetchSource(
+          this.demUrlPattern.replace("pmtiles://", ""),
+        );
+        this.pmtiles = new PMTiles(source);
+      } catch (e) {
+        console.warn("Could not open pmtiles", e);
+      }
+    }
+
+    this.getTile =
+      options.getTile ||
+      (this.demUrlPattern.startsWith("pmtiles://")
+        ? defaultPMtilesGetTile
+        : defaultGetTile);
   }
 
   fetchTile(
@@ -69,25 +128,30 @@ export class LocalDemManager implements DemManager {
     parentAbortController: AbortController,
     timer?: Timer,
   ): Promise<FetchResponse> {
-    const url = this.demUrlPattern
-      .replace("{z}", z.toString())
-      .replace("{x}", x.toString())
-      .replace("{y}", y.toString());
-    timer?.useTile(url);
+    const cacheKey = `${z}/${x}/${y}`;
+    timer?.useTile(cacheKey);
     return this.tileCache.get(
-      url,
+      cacheKey,
       (_, childAbortController) => {
-        timer?.fetchTile(url);
+        timer?.fetchTile(cacheKey);
         const mark = timer?.marker("fetch");
         return withTimeout(
           this.timeoutMs,
-          this.getTile(url, childAbortController).finally(() => mark?.()),
+          this.getTile(
+            z,
+            x,
+            y,
+            this.demUrlPattern,
+            childAbortController,
+            this.pmtiles,
+          ).finally(() => mark?.()),
           childAbortController,
         );
       },
       parentAbortController,
     );
   }
+
   fetchAndParseTile = (
     z: number,
     x: number,
@@ -97,15 +161,11 @@ export class LocalDemManager implements DemManager {
   ): Promise<DemTile> => {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
-    const url = this.demUrlPattern
-      .replace("{z}", z.toString())
-      .replace("{x}", x.toString())
-      .replace("{y}", y.toString());
-
-    timer?.useTile(url);
+    const cacheKey = `${z}/${x}/${y}`;
+    timer?.useTile(cacheKey);
 
     return this.parsedCache.get(
-      url,
+      cacheKey,
       async (_, childAbortController) => {
         const response = await self.fetchTile(
           z,
