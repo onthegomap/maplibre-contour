@@ -1,6 +1,7 @@
 /**
- * This module provides utilities for working with PMTiles and processing image data in node.
+ * This module provides utilities for working with PMTiles in a node environment.
  */
+
 import fs from "node:fs";
 import { PMTiles, FetchSource, type Source } from "pmtiles";
 import sharp from "sharp";
