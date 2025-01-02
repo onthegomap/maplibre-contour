@@ -1,6 +1,6 @@
 {
   "name": "@acalcutt/maplibre-contour-pmtiles",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Render contour lines from raster elevation tiles in maplibre-gl-js from pmtiles terrain sources",
   "unpkg": "dist/maplibre-contour-pmtiles.min.js",
   "main": "dist/maplibre-contour-pmtiles.cjs",
