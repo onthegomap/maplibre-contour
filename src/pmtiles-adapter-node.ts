@@ -1,21 +1,42 @@
+/**
+ * This module provides utilities for working with PMTiles and processing image data in node.
+ */
 import fs from "node:fs";
 import { PMTiles, FetchSource, type Source } from "pmtiles";
 import sharp from "sharp";
 import { decodeParsedImage } from "./decode-image";
 import type { DemTile, Encoding } from "./types";
+
 const httpTester = /^https?:\/\//i;
 
+/**
+ * Represents a PMTiles data source using a file descriptor.
+ */
 export class PMTilesFileSource implements Source {
   private fd: number;
 
+  /**
+   * Creates a new PMTilesFileSource.
+   * @param {number} fd - The file descriptor for the PMTiles file.
+   */
   constructor(fd: number) {
     this.fd = fd;
   }
 
+  /**
+   * Gets the key representing this source (the file descriptor as a string).
+   * @returns {string} The key for this source.
+   */
   getKey(): string {
-    return String(this.fd); // Convert the fd to a string
+    return String(this.fd);
   }
 
+  /**
+   * Gets a chunk of bytes from the PMTiles file.
+   * @param {number} offset - The offset to read from.
+   * @param {number} length - The number of bytes to read.
+   * @returns {Promise<{ data: ArrayBuffer }>} A Promise that resolves with the requested bytes as an ArrayBuffer.
+   */
   async getBytes(
     offset: number,
     length: number,
@@ -30,13 +51,21 @@ export class PMTilesFileSource implements Source {
   }
 }
 
+/**
+ * Reads bytes from a file asynchronously.
+ * @param {number} fd - The file descriptor.
+ * @param {Buffer} buffer - The buffer to read data into.
+ * @param {number} offset - The offset to read from in the file.
+ * @returns {Promise<void>} A Promise that resolves when the bytes are read or rejects if an error occurs.
+ * @throws If an error occurs while reading the file or the correct amount of data isn't read.
+ */
 async function readFileBytes(
   fd: number,
   buffer: Buffer,
   offset: number,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    fs.read(fd, buffer, 0, buffer.length, offset, (err, bytesRead, buff) => {
+    fs.read(fd, buffer, 0, buffer.length, offset, (err, bytesRead, _buff) => {
       if (err) {
         return reject(err);
       }
@@ -52,6 +81,11 @@ async function readFileBytes(
   });
 }
 
+/**
+ * Opens a PMTiles file or resource, creating a PMTiles object.
+ * @param {string} FilePath - The path to a local PMTiles file or a URL for a remote resource.
+ * @returns {PMTiles} A PMTiles object.
+ */
 export function openPMtiles(FilePath: string): PMTiles {
   let pmtiles: PMTiles;
   let fd: number | undefined;
@@ -67,9 +101,18 @@ export function openPMtiles(FilePath: string): PMTiles {
     }
     return pmtiles;
   } finally {
+    // No need to close here; the PMTiles object is responsible for cleaning up the source.
   }
 }
 
+/**
+ * Retrieves a tile from a PMTiles archive by its ZXY coordinates.
+ * @param {PMTiles} pmtiles - The PMTiles object to query.
+ * @param {number} z - The zoom level of the tile.
+ * @param {number} x - The X coordinate of the tile.
+ * @param {number} y - The Y coordinate of the tile.
+ * @returns {Promise<{ data: ArrayBuffer | undefined }>} A Promise that resolves with the tile data as an ArrayBuffer, or undefined if the tile is not found.
+ */
 export async function getPMtilesTile(
   pmtiles: PMTiles,
   z: number,
