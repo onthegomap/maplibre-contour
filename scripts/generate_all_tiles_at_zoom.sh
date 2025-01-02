@@ -91,7 +91,7 @@ process_tile() {
   fi
   
 
-  npx tsx ../src/generate-countour-tile-batch.ts \
+  npx tsx ../src/generate-countour-tile-pyramid.ts \
     --x "$x_coord" \
     --y "$y_coord" \
     --z "$zoom_level" \
