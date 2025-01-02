@@ -10,7 +10,7 @@ maplibre-contour-pmtiles is a plugin to render contour lines in [MapLibre GL JS]
 To use it, import the [@acalcutt/maplibre-contour-pmtiles](https://www.npmjs.com/package/@acalcutt/maplibre-contour-pmtiles) package with a script tag:
 
 ```html
-<script src="https://unpkg.com/@acalcutt/maplibre-contour-pmtiles@0.0.1/dist/maplibre-contour-pmtiles.min.js"></script>
+<script src="https://unpkg.com/@acalcutt/maplibre-contour-pmtiles@latest/dist/maplibre-contour-pmtiles.min.js"></script>
 ```
 
 Or as an ES6 module: `npm add @acalcutt/maplibre-contour-pmtiles`
@@ -23,14 +23,26 @@ Then to use, first create a `DemSource` and register it with maplibre:
 
 ```js
 var demSource = new mlcontour.DemSource({
-  url: "https://url/of/dem/source.pmtiles",
-  encoding: "terrarium", // "mapbox" or "terrarium" default="terrarium"
-  maxzoom: 13,
+  url: "pmtiles://https://url/of/dem/source.pmtiles",
+  encoding: "mapbox", // "mapbox" or "terrarium" default="terrarium"
+  maxzoom: 12,
   worker: true, // offload isoline computation to a web worker to reduce jank
   cacheSize: 100, // number of most-recent tiles to cache
   timeoutMs: 10_000, // timeout on fetch requests
 });
 demSource.setupMaplibre(maplibregl);
+```
+When using scripts locally with node, url can also use the format
+```linux
+  url: "pmtiles:///local/path/to/pmtiles/source.pmtiles",
+```
+```windows
+  url: "pmtiles://C://local//path//to//pmtiles//source.pmtiles",
+```
+
+You should also be able to use a regular non-pmtiles source with
+```js
+  url: "https://url/of/dem/source/{z}/{x}/{y}.png",
 ```
 
 Then configure a new contour source and add it to your map:

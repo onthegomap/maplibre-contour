@@ -1,6 +1,6 @@
 {
   "name": "@acalcutt/maplibre-contour-pmtiles",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Render contour lines from raster elevation tiles in maplibre-gl-js from pmtiles terrain sources",
   "unpkg": "dist/maplibre-contour-pmtiles.min.js",
   "main": "dist/maplibre-contour-pmtiles.cjs",
@@ -43,6 +43,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "3.2.0",
     "@eslint/js": "9.17.0",
+    "@mapbox/tilebelt": "^2.0.2",
     "@mapbox/vector-tile": "2.0.3",
     "@rollup/plugin-alias": "^5.1.1",
     "@rollup/plugin-commonjs": "28.0.2",
@@ -57,11 +58,11 @@
     "@types/node": "22.10.2",
     "@types/pbf": "3.0.5",
     "@types/pngjs": "6.0.5",
-    "@mapbox/tilebelt": "^2.0.2",
     "benchmark": "2.1.4",
     "canvas": "^2.11.2",
+    "commander": "^13.0.0",
     "cross-env": "^7.0.3",
-    "eslint": "9.16.0",
+    "eslint": "9.17.0",
     "eslint-config-prettier": "9.1.0",
     "jest": "29.7.0",
     "jest-environment-jsdom": "29.7.0",
@@ -72,9 +73,11 @@
     "pngjs": "7.0.0",
     "prettier": "3.4.2",
     "rollup": "4.28.1",
+    "sharp": "^0.33.5",
     "ts-jest": "29.2.5",
+    "tslib": "^2.8.1",
     "typescript": "5.7.2",
-    "typescript-eslint": "8.18.0",
+    "typescript-eslint": "8.18.2",
     "whatwg-fetch": "3.6.20"
   }
 }

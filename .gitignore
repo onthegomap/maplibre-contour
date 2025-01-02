@@ -10,3 +10,4 @@ lerna-debug.log*
 TODO
 target
 test-project*/package-lock.json
+scripts/output

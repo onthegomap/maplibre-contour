@@ -1,8 +1,12 @@
-import type { DemManager } from "./dem-manager";
-import { LocalDemManager } from "./dem-manager";
+import { LocalDemManager } from "./local-dem-manager";
 import { decodeOptions, encodeOptions, getOptionsForZoom } from "./utils";
 import RemoteDemManager from "./remote-dem-manager";
-import type { DemTile, GlobalContourTileOptions, Timing } from "./types";
+import type {
+  DemManager,
+  DemTile,
+  GlobalContourTileOptions,
+  Timing,
+} from "./types";
 import type WorkerDispatch from "./worker-dispatch";
 import Actor from "./actor";
 import { Timer } from "./performance";
@@ -129,15 +133,14 @@ export class DemSource {
     this.sharedDemProtocolUrl = `${this.sharedDemProtocolId}://{z}/{x}/{y}`;
     this.contourProtocolUrlBase = `${this.contourProtocolId}://{z}/{x}/{y}`;
     const ManagerClass = worker ? RemoteDemManager : LocalDemManager;
-    this.manager = new ManagerClass(
-      url,
+    this.manager = new ManagerClass({
+      demUrlPattern: url,
       cacheSize,
       encoding,
       maxzoom,
       timeoutMs,
       actor,
-    );
-    this.manager.initializePMTiles();
+    });
   }
 
   /** Registers a callback to be invoked with a performance report after each tile is requested. */

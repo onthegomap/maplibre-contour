@@ -1,6 +1,7 @@
 import type {
   ContourTile,
   DemTile,
+  FlexibleContourTileOptions,
   GlobalContourTileOptions,
   IndividualContourTileOptions,
   TransferrableContourTile,
@@ -79,26 +80,25 @@ export function encodeIndividualOptions(
 }
 
 export function getOptionsForZoom(
-  options: GlobalContourTileOptions,
+  options: FlexibleContourTileOptions,
   zoom: number,
 ): IndividualContourTileOptions {
   const { thresholds, ...rest } = options;
-
   let levels: number[] = [];
-  let maxLessThanOrEqualTo: number = -Infinity;
-
-  Object.entries(thresholds).forEach(([zString, value]) => {
-    const z = Number(zString);
-    if (z <= zoom && z > maxLessThanOrEqualTo) {
-      maxLessThanOrEqualTo = z;
-      levels = typeof value === "number" ? [value] : value;
-    }
-  });
-
+  if (thresholds) {
+    let maxLessThanOrEqualTo: number = -Infinity;
+    Object.entries(thresholds).forEach(([zString, value]) => {
+      const z = Number(zString);
+      if (z <= zoom && z > maxLessThanOrEqualTo) {
+        maxLessThanOrEqualTo = z;
+        levels = typeof value === "number" ? [value] : value;
+      }
+    });
+  }
   return {
     levels,
     ...rest,
-  };
+  } as IndividualContourTileOptions;
 }
 
 export function copy(src: ArrayBuffer): ArrayBuffer {

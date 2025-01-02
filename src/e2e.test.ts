@@ -6,11 +6,10 @@ import { MainThreadDispatch } from "./remote-dem-manager";
 import type { DemTile, Timing } from "./types";
 import { VectorTile } from "@mapbox/vector-tile";
 import Pbf from "pbf";
-import * as fs from "fs";
-import { isNumber } from "lodash";
+import { LocalDemManager } from "./local-dem-manager";
 
 beforeEach(() => {
-  jest.useFakeTimers({ doNotFake: ["performance"] });
+  jest.useFakeTimers({ now: 0, doNotFake: ["performance"] });
 });
 afterEach(() => {
   jest.useRealTimers();
@@ -45,11 +44,12 @@ mainThreadFromWorker.postMessage = (data) =>
   workerFromMainThread?.onmessage?.({ data } as any);
 const mainActor = new Actor<WorkerDispatch>(workerFromMainThread, local);
 const workerActor = new Actor<MainThreadDispatch>(mainThreadFromWorker, remote);
+
 const source = new DemSource({
-  url: "./test-project/test-tiles.pmtiles",
+  url: "https://example/{z}/{x}/{y}.png",
   cacheSize: 100,
-  encoding: "mapbox",
-  maxzoom: 12,
+  encoding: "terrarium",
+  maxzoom: 11,
   worker: true,
   actor: mainActor,
 });
@@ -64,11 +64,20 @@ const expectedElevations = Float32Array.from(
 );
 
 test("e2e fetch tile and shared DEM protocol share cache", async () => {
-  const tile = await source.getDemTile(11, 1090, 719);
+  global.fetch = jest.fn().mockImplementation(async () => {
+    jest.advanceTimersByTime(1);
+    return new Response(
+      new Blob([Uint8Array.from([1, 2])], { type: "image/png" }),
+      {
+        status: 200,
+      },
+    );
+  });
+  const tile = await source.getDemTile(1, 2, 3);
   expect(tile.data).toEqual(expectedElevations);
   expect(tile.width).toBe(4);
   expect(tile.height).toBe(4);
-  const tile2 = await source.getDemTile(11, 1090, 719);
+  const tile2 = await source.getDemTile(1, 2, 3);
   expect(tile2.data).toEqual(expectedElevations);
 
   const timings: Timing[] = [];
@@ -77,35 +86,45 @@ test("e2e fetch tile and shared DEM protocol share cache", async () => {
     await source.sharedDemProtocol(
       {
         url: source.sharedDemProtocolUrl
-          .replace("{z}", "11")
-          .replace("{x}", "1090")
-          .replace("{y}", "719"),
+          .replace("{z}", "1")
+          .replace("{x}", "2")
+          .replace("{y}", "3"),
       },
       new AbortController(),
     )
   ).data;
 
-  // Note: Since you're using PMTiles the fetch call now won't work, you will need to create a test that tests if the correct tile has been downloaded.
   expect(fetched).toEqual(Uint8Array.from([1, 2]).buffer);
 
-  expect(timings).toHaveLength(1);
-  expect(timings[0]).toMatchObject({
-    duration: expect.any(Number),
-    resources: [],
-    url: "dem-shared://11/1090/719",
-    wait: expect.any(Number),
-  });
-  expect(timings[0].marks).toMatchObject({
-    main: expect.arrayContaining([
-      expect.arrayContaining([expect.any(Number), expect.any(Number)]),
-    ]),
-    worker: expect.arrayContaining([
-      expect.arrayContaining([expect.any(Number), expect.any(Number)]),
-    ]),
-  });
+  expect(global.fetch).toBeCalledTimes(1);
+  expect(global.fetch).toBeCalledWith(
+    "https://example/1/2/3.png",
+    expect.anything(),
+  );
+  expect(timings).toMatchObject([
+    {
+      duration: 0,
+      marks: {
+        main: [[2, 2]],
+        worker: [[2, 2]],
+      },
+      resources: [],
+      url: "dem-shared://1/2/3",
+      wait: 0,
+    },
+  ]);
 });
 
 test("e2e contour tile", async () => {
+  global.fetch = jest.fn().mockImplementation(async () => {
+    jest.advanceTimersByTime(1);
+    return new Response(
+      new Blob([Uint8Array.from([1, 2])], { type: "image/png" }),
+      {
+        status: 200,
+      },
+    );
+  });
   const timings: Timing[] = [];
   source.onTiming((timing) => timings.push(timing));
   const contourTile: ArrayBuffer = (
@@ -122,9 +141,9 @@ test("e2e contour tile", async () => {
             levelKey: "l",
             overzoom: 0,
           })
-          .replace("{z}", "11")
-          .replace("{x}", "1090")
-          .replace("{y}", "719"),
+          .replace("{z}", "10")
+          .replace("{x}", "20")
+          .replace("{y}", "30"),
       },
       new AbortController(),
     )
@@ -153,41 +172,56 @@ test("e2e contour tile", async () => {
     x: 2049,
     y: 2052,
   });
-  expect(timings).toHaveLength(1);
-  expect(timings[0]).toMatchObject({
-    tilesUsed: 9,
-    process: 0,
-    resources: [],
-    url: "dem-contour://11/1090/719?buffer=0&contourLayer=c&elevationKey=e&levelKey=l&overzoom=0&thresholds=10*10",
-    wait: expect.any(Number),
-    duration: expect.any(Number),
-    decode: expect.any(Number),
-    fetch: expect.any(Number),
-  });
-  expect(timings[0].marks).toMatchObject({
-    main: expect.arrayContaining([
-      expect.arrayContaining([expect.any(Number), expect.any(Number)]),
-    ]),
-    worker: expect.arrayContaining([
-      expect.arrayContaining([expect.any(Number), expect.any(Number)]),
-    ]),
-    fetch: expect.arrayContaining([
-      expect.arrayContaining([expect.any(Number), expect.any(Number)]),
-    ]),
-    decode: expect.arrayContaining([
-      expect.arrayContaining([expect.any(Number), expect.any(Number)]),
-    ]),
-    isoline: expect.arrayContaining([
-      expect.arrayContaining([
-        expect.any(Number),
-        expect.any(Number),
-        expect.any(Number),
-      ]),
-    ]),
-  });
+  expect(timings).toMatchObject([
+    {
+      tilesUsed: 9,
+      process: 0,
+      duration: 18,
+      marks: {
+        main: [[0, 18]],
+        worker: [[0, 18]],
+        fetch: [
+          [0, 9],
+          [1, 9],
+          [2, 9],
+          [3, 9],
+          [4, 9],
+          [5, 9],
+          [6, 9],
+          [7, 9],
+          [8, 9],
+        ],
+        decode: [
+          [10, 18],
+          [11, 18],
+          [12, 18],
+          [13, 18],
+          [14, 18],
+          [15, 18],
+          [16, 18],
+          [17, 18],
+          [18, 18],
+        ],
+        isoline: [[18, 18, 18]],
+      },
+      decode: 8,
+      fetch: 9,
+      resources: [],
+      url: "dem-contour://10/20/30?buffer=0&contourLayer=c&elevationKey=e&levelKey=l&overzoom=0&thresholds=10*10",
+      wait: 1,
+    },
+  ]);
 
   // fetch adjacent tile where 6/9 neighbors are already cached
   jest.setSystemTime(1);
+  performance.getEntriesByName = (name) => [
+    {
+      duration: 1,
+      name,
+      entryType: "resource",
+      startTime: performance.now(),
+    } as PerformanceResourceTiming,
+  ];
   await source.contourProtocol(
     {
       url: source
@@ -197,42 +231,40 @@ test("e2e contour tile", async () => {
           },
           overzoom: 0,
         })
-        .replace("{z}", "11")
-        .replace("{x}", "1091")
-        .replace("{y}", "719"),
+        .replace("{z}", "10")
+        .replace("{x}", "21")
+        .replace("{y}", "30"),
     },
     new AbortController(),
   );
   expect(timings[1]).toMatchObject({
     tilesUsed: 9,
     process: 0,
-    resources: expect.any(Array),
-    url: "dem-contour://11/1091/719?overzoom=0&thresholds=10*10",
-    wait: expect.any(Number),
-    duration: expect.any(Number),
-    decode: expect.any(Number),
-    fetch: expect.any(Number),
-  });
-  expect(timings[1].marks).toMatchObject({
-    main: expect.arrayContaining([
-      expect.arrayContaining([expect.any(Number), expect.any(Number)]),
-    ]),
-    worker: expect.arrayContaining([
-      expect.arrayContaining([expect.any(Number), expect.any(Number)]),
-    ]),
-    fetch: expect.arrayContaining([
-      expect.arrayContaining([expect.any(Number), expect.any(Number)]),
-    ]),
-    decode: expect.arrayContaining([
-      expect.arrayContaining([expect.any(Number), expect.any(Number)]),
-    ]),
-    isoline: expect.arrayContaining([
-      expect.arrayContaining([
-        expect.any(Number),
-        expect.any(Number),
-        expect.any(Number),
-      ]),
-    ]),
+    duration: 6,
+    decode: 2,
+    fetch: 3,
+    wait: 1,
+    marks: {
+      main: [[1, 7]],
+      worker: [[1, 7]],
+      fetch: [
+        [1, 4],
+        [2, 4],
+        [3, 4],
+      ],
+      decode: [
+        [5, 7],
+        [6, 7],
+        [7, 7],
+      ],
+      isoline: [[7, 7, 7]],
+    },
+    resources: [
+      { duration: 1, startTime: 7, name: "10/22/29" },
+      { duration: 1, startTime: 7, name: "10/22/30" },
+      { duration: 1, startTime: 7, name: "10/22/31" },
+    ],
+    url: "dem-contour://10/21/30?overzoom=0&thresholds=10*10",
   });
 });
 
@@ -243,11 +275,38 @@ test("decode image from worker", async () => {
     new AbortController(),
     undefined,
     new Blob([], { type: "image/png" }),
-    "mapbox",
+    "terrarium",
   );
   expect(result).toMatchObject({
     width: 4,
     height: 4,
     data: expectedElevations,
   });
+});
+
+test("fake decode image and fetch tile", async () => {
+  const getTileSpy = jest.fn().mockReturnValue(Promise.resolve({}));
+  const demManager = new LocalDemManager({
+    demUrlPattern: "https://example/{z}/{x}/{y}.png",
+    cacheSize: 100,
+    encoding: "terrarium",
+    maxzoom: 11,
+    timeoutMs: 10000,
+    decodeImage: async () => ({
+      width: 4,
+      height: 4,
+      data: expectedElevations,
+    }),
+    getTile: getTileSpy,
+  });
+  const demTile = await demManager.fetchAndParseTile(
+    1,
+    2,
+    3,
+    new AbortController(),
+  );
+  expect(demTile.data).toEqual(expectedElevations);
+  expect(getTileSpy.mock.calls[0][0]).toBe(1);
+  expect(getTileSpy.mock.calls[0][1]).toBe(2);
+  expect(getTileSpy.mock.calls[0][2]).toBe(3);
 });

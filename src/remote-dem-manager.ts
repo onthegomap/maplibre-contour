@@ -2,17 +2,17 @@ import Actor from "./actor";
 import CONFIG from "./config";
 import type WorkerDispatch from "./worker-dispatch";
 import decodeImage from "./decode-image";
-import type { DemManager } from "./dem-manager";
 import { Timer } from "./performance";
 import type {
   ContourTile,
+  DemManager,
+  DemManagerInitizlizationParameters,
   DemTile,
   Encoding,
   FetchResponse,
   IndividualContourTileOptions,
 } from "./types";
 import { prepareDemTile } from "./utils";
-import { PMTiles, FetchSource } from "pmtiles";
 
 let _actor: Actor<WorkerDispatch> | undefined;
 let id = 0;
@@ -41,40 +41,20 @@ export default class RemoteDemManager implements DemManager {
   managerId: number;
   actor: Actor<WorkerDispatch>;
   loaded: Promise<any>;
-  pmtiles: PMTiles | null = null;
-  fileUrl: string;
 
-  constructor(
-    fileUrl: string,
-    cacheSize: number,
-    encoding: Encoding,
-    maxzoom: number,
-    timeoutMs: number,
-    actor?: Actor<WorkerDispatch>,
-  ) {
+  constructor(options: DemManagerInitizlizationParameters) {
     const managerId = (this.managerId = ++id);
-    this.pmtiles = null;
-    this.fileUrl = fileUrl;
-    this.actor = actor || defaultActor();
+    this.actor = options.actor || defaultActor();
     this.loaded = this.actor.send(
       "init",
       [],
       new AbortController(),
       undefined,
       {
-        cacheSize,
-        fileUrl,
-        encoding,
-        maxzoom,
+        ...options,
         managerId,
-        timeoutMs,
       },
     );
-  }
-
-  public async initializePMTiles() {
-    const source = new FetchSource(this.fileUrl);
-    this.pmtiles = new PMTiles(source);
   }
 
   fetchTile = (

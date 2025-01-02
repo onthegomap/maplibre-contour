@@ -26,21 +26,21 @@
     return buffer;
   }
 
-  const awsManager = new LocalDemManager(
-    "https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png",
-    100,
-    "terrarium",
-    12,
-    10_000,
-  );
+  const awsManager = new LocalDemManager({
+    demUrlPattern: "https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png",
+    cacheSize: 100,
+    encoding: "terrarium",
+    maxzoom: 12,
+    timeoutMs: 10_000,
+  });
 
-  const demoManager = new LocalDemManager(
-    "https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png",
-    100,
-    "mapbox",
-    11,
-    10_000,
-  );
+  const demoManager = new LocalDemManager({
+    demUrlPattern: "https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png",
+    cacheSize: 100,
+    encoding: "mapbox",
+    maxzoom: 11,
+    timeoutMs: 10_000,
+  });
   let noMoreFetch = false;
   if (typeof document === "undefined") {
     demoManager.decodeImage = awsManager.decodeImage = (blob, encoding) =>
