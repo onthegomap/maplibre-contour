@@ -138,7 +138,7 @@ export class LocalDemManager implements DemManager {
 
         return withTimeout(
           this.timeoutMs,
-          this._getTile(
+          this.getTile(
             z,
             x,
             y,
@@ -152,17 +152,6 @@ export class LocalDemManager implements DemManager {
       parentAbortController,
     );
   }
-
-  private _getTile: GetTileFunction = async (
-    z: number,
-    x: number,
-    y: number,
-    demUrlPattern: string,
-    abortController: AbortController,
-    pmtiles?: PMTiles | null,
-  ) => {
-    return this.getTile(z, x, y, demUrlPattern, abortController, pmtiles);
-  };
 
   fetchAndParseTile = (
     z: number,
