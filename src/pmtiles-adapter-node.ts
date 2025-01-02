@@ -1,9 +1,8 @@
 import fs from "node:fs";
 import { PMTiles, FetchSource, type Source } from "pmtiles";
-import { PNG } from "pngjs";
+import sharp from "sharp";
 import { decodeParsedImage } from "./decode-image";
-import type { Encoding } from "./types";
-
+import type { DemTile, Encoding } from "./types";
 const httpTester = /^https?:\/\//i;
 
 export class PMTilesFileSource implements Source {
@@ -70,6 +69,7 @@ export function openPMtiles(FilePath: string): PMTiles {
   } finally {
   }
 }
+
 export async function getPMtilesTile(
   pmtiles: PMTiles,
   z: number,
@@ -90,17 +90,54 @@ export async function getPMtilesTile(
   }
 }
 
+/**
+ * Processes image data from a blob.
+ * @param {Blob} blob - The image data as a Blob.
+ * @param {Encoding} encoding - The encoding to use when decoding.
+ * @param {AbortController} abortController - An AbortController to cancel the image processing.
+ * @returns {Promise<DemTile>} - A Promise that resolves with the processed image data, or throws if aborted.
+ * @throws If an error occurs during image processing.
+ */
 export async function GetImageData(
   blob: Blob,
   encoding: Encoding,
-): Promise<any> {
-  const buffer = await blob.arrayBuffer();
-  const png = PNG.sync.read(Buffer.from(buffer));
-  const parsed = decodeParsedImage(
-    png.width,
-    png.height,
-    encoding,
-    png.data as any as Uint8ClampedArray,
-  );
-  return parsed;
+  abortController: AbortController,
+): Promise<DemTile> {
+  if (abortController?.signal?.aborted) {
+    throw new Error("Image processing was aborted.");
+  }
+  try {
+    const buffer = await blob.arrayBuffer();
+    const image = sharp(Buffer.from(buffer));
+
+    if (abortController?.signal?.aborted) {
+      throw new Error("Image processing was aborted.");
+    }
+
+    const { data, info } = await image
+      .ensureAlpha() // Ensure RGBA output
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    if (abortController?.signal?.aborted) {
+      throw new Error("Image processing was aborted.");
+    }
+    const parsed = decodeParsedImage(
+      info.width,
+      info.height,
+      encoding,
+      data as any as Uint8ClampedArray,
+    );
+    if (abortController?.signal?.aborted) {
+      throw new Error("Image processing was aborted.");
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error("Error processing image:", error);
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error("An unknown error has occurred.");
+  }
 }

@@ -19,7 +19,7 @@ async function decodeImageNode(
   encoding: Encoding,
   abortController: AbortController,
 ): Promise<DemTile> {
-  const img = await GetImageData(blob, encoding);
+  const img = await GetImageData(blob, encoding, abortController);
   if (isAborted(abortController)) return null as any as DemTile;
   return img;
 }
