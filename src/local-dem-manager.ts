@@ -86,7 +86,6 @@ export class LocalDemManager implements DemManager {
   parsedCache: AsyncCache<string, DemTile>;
   contourCache: AsyncCache<string, ContourTile>;
   pmtiles: PMTiles | null = null;
-  fileUrl: string;
   encoding: Encoding;
   maxzoom: number;
   timeoutMs: number;
@@ -101,7 +100,6 @@ export class LocalDemManager implements DemManager {
     this.contourCache = new AsyncCache(options.cacheSize);
     this.timeoutMs = options.timeoutMs;
     this.demUrlPattern = options.demUrlPattern;
-    this.fileUrl = options.demUrlPattern;
     this.encoding = options.encoding;
     this.maxzoom = options.maxzoom;
     this.decodeImage = options.decodeImage || defaultDecodeImage;
