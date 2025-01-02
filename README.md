@@ -1,35 +1,48 @@
-# maplibre-contour
+# maplibre-contour-pmtiles
 
-maplibre-contour is a plugin to render contour lines in [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) from `raster-dem` sources that powers the terrain mode for [onthegomap.com](https://onthegomap.com).
+maplibre-contour-pmtiles is a plugin to render contour lines in [MapLibre GL JS](https://github.com/maplibre/maplibre-gl-js) from `raster-dem` pmtiles sources. It was forked to support pmtiles with http support on the web and http and local supoort in node.js.
 
 ![Topographic map of Mount Washington](demo.png)
 
-[Live example](https://onthegomap.github.io/maplibre-contour) | [Code](./index.html)
+[Live example #1 (Just Terrain)](https://acalcutt.github.io/maplibre-contour-pmtiles/) | [Code](https://github.com/acalcutt/maplibre-contour-pmtiles/blob/pages/index.html)  
+[Live example #2 (w/ OpenMapTiles Style)](https://acalcutt.github.io/maplibre-contour-pmtiles/omt.html) | [Code](https://github.com/acalcutt/maplibre-contour-pmtiles/blob/pages/omt.html)  | [Style](https://acalcutt.github.io/maplibre-contour-pmtiles/styles/osm-bright-gl-style/style.json) 
 
-To use it, import the [maplibre-contour](https://www.npmjs.com/package/maplibre-contour) package with a script tag:
+To use it, import the [@acalcutt/maplibre-contour-pmtiles](https://www.npmjs.com/package/@acalcutt/maplibre-contour-pmtiles) package with a script tag:
 
 ```html
-<script src="https://unpkg.com/maplibre-contour@0.1.0/dist/index.min.js"></script>
+<script src="https://unpkg.com/@acalcutt/maplibre-contour-pmtiles@latest/dist/maplibre-contour-pmtiles.min.js"></script>
 ```
 
-Or as an ES6 module: `npm add maplibre-contour`
+Or as an ES6 module: `npm add @acalcutt/maplibre-contour-pmtiles`
 
 ```js
-import mlcontour from "maplibre-contour";
+import mlcontour from "@acalcutt/maplibre-contour-pmtiles";
 ```
 
 Then to use, first create a `DemSource` and register it with maplibre:
 
 ```js
 var demSource = new mlcontour.DemSource({
-  url: "https://url/of/dem/source/{z}/{x}/{y}.png",
-  encoding: "terrarium", // "mapbox" or "terrarium" default="terrarium"
-  maxzoom: 13,
+  url: "pmtiles://https://url/of/dem/source.pmtiles",
+  encoding: "mapbox", // "mapbox" or "terrarium" default="terrarium"
+  maxzoom: 12,
   worker: true, // offload isoline computation to a web worker to reduce jank
   cacheSize: 100, // number of most-recent tiles to cache
   timeoutMs: 10_000, // timeout on fetch requests
 });
 demSource.setupMaplibre(maplibregl);
+```
+When using scripts locally with node, url can also use the format
+```linux
+  url: "pmtiles:///local/path/to/pmtiles/source.pmtiles",
+```
+```windows
+  url: "pmtiles://C://local//path//to//pmtiles//source.pmtiles",
+```
+
+You should also be able to use a regular non-pmtiles source with
+```js
+  url: "https://url/of/dem/source/{z}/{x}/{y}.png",
 ```
 
 Then configure a new contour source and add it to your map:
@@ -126,7 +139,8 @@ There are a lot of parameters you can tweak when generating contour lines from e
 
 # License
 
-maplibre-contour is licensed under the [BSD 3-Clause License](LICENSE). It includes code adapted from:
+maplibre-contour-pmtiles is licensed under the [BSD 3-Clause License](LICENSE). It includes code adapted from:
 
 - [d3-contour](https://github.com/d3/d3-contour) (ISC license)
 - [vt-pbf](https://github.com/mapbox/vt-pbf) (MIT license)
+- [PMTiles](https://github.com/protomaps/PMTiles) (BSD 3-Clause license)
