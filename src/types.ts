@@ -1,6 +1,7 @@
 import type Actor from "./actor";
 import type { Timer } from "./performance";
 import type WorkerDispatch from "./worker-dispatch";
+import type { PMTiles } from "pmtiles";
 
 /** Scheme used to map pixel rgb values elevations. */
 export type Encoding = "terrarium" | "mapbox";
@@ -141,8 +142,12 @@ export interface DemManager {
 }
 
 export type GetTileFunction = (
-  url: string,
+  z: number,
+  x: number,
+  y: number,
+  demUrlPattern: string,
   abortController: AbortController,
+  pmtiles?: PMTiles | null,
 ) => Promise<FetchResponse>;
 
 export type DecodeImageFunction = (
