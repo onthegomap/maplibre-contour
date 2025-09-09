@@ -8,13 +8,13 @@
 
   if (typeof Benchmark === "undefined") {
     global.Benchmark = (await import("benchmark")).default;
-    global.mlcontour = (await import("./dist/index.mjs")).default;
+    global.mlcontour = (await import("./dist/maplibre-contour-pmtiles.mjs")).default;
     global.PNG = (await import("pngjs")).default.PNG;
   }
 
   log("Running benchmarks...");
 
-  /** @type {import('./src/index.d.ts')['default']} */
+  /** @type {import('./src/maplibre-contour-pmtiles.d.ts')['default']} */
   const { decodeParsedImage, LocalDemManager } = mlcontour;
 
   function toBuffer(arrayBuffer) {
