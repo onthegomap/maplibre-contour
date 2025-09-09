@@ -60,6 +60,7 @@
     "@types/pngjs": "6.0.5",
     "benchmark": "2.1.4",
     "canvas": "3.2.0",
+    "commander": "14.0.0",
     "cross-env": "^7.0.3",
     "eslint": "9.18.0",
     "eslint-config-prettier": "10.0.1",
