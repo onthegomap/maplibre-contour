@@ -76,10 +76,10 @@ export default function encodeVectorTile(tile: Tile): Uint8Array {
 
 function writeLayer(layer: Layer & { id: string }, pbf?: Pbf) {
   if (!pbf) throw new Error("pbf undefined");
-  pbf.writeVarintField(15, 2);
-  pbf.writeStringField(1, layer.id || "");
-  pbf.writeVarintField(5, layer.extent || 4096);
-
+  
+  pbf.writeStringField(1, layer.id || "");      // name (required, field 1)
+  
+  // Write all features (field 2)
   const context: Context = {
     keys: [],
     values: [],
@@ -92,13 +92,18 @@ function writeLayer(layer: Layer & { id: string }, pbf?: Pbf) {
     pbf.writeMessage(2, writeFeature, context);
   }
 
+  // Write all keys (field 3)
   for (const key of context.keys) {
     pbf.writeStringField(3, key);
   }
 
+  // Write all values (field 4)
   for (const value of context.values) {
     pbf.writeMessage(4, writeValue, value);
   }
+  
+  pbf.writeVarintField(5, layer.extent || 4096); // extent (field 5)
+  pbf.writeVarintField(15, 2);                   // version (field 15, LAST)
 }
 
 function writeFeature(context: Context, pbf?: Pbf) {
