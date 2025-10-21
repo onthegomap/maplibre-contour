@@ -57,6 +57,10 @@ export interface ContourTileOptions {
   buffer?: number;
   /** When overzooming tiles, subsample to scale up to at least this size to make the contour lines smoother at higher zooms. */
   subsampleBelow?: number;
+  /** Apply linear interpolation smoothing to contour lines (default false) */
+  smooth?: boolean;
+  /** Round final coordinates to integers for vector tile encoding (default true) */
+  round?: boolean;
 }
 
 export interface GlobalContourTileOptions extends ContourTileOptions {
@@ -157,6 +161,10 @@ export type DemManagerRequiredInitializationParameters = {
   encoding: Encoding;
   maxzoom: number;
   timeoutMs: number;
+  /** Apply linear interpolation smoothing to contour lines (default false) */
+  smooth?: boolean;
+  /** Round final coordinates to integers for vector tile encoding (default true) */
+  round?: boolean;
 };
 
 export type DemManagerInitizlizationParameters =

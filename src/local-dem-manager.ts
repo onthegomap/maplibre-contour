@@ -49,6 +49,8 @@ export class LocalDemManager implements DemManager {
   loaded = Promise.resolve();
   decodeImage: DecodeImageFunction;
   getTile: GetTileFunction;
+  smooth: boolean;
+  round: boolean;
 
   constructor(options: DemManagerInitizlizationParameters) {
     this.tileCache = new AsyncCache(options.cacheSize);
@@ -60,6 +62,8 @@ export class LocalDemManager implements DemManager {
     this.maxzoom = options.maxzoom;
     this.decodeImage = options.decodeImage || defaultDecodeImage;
     this.getTile = options.getTile || defaultGetTile;
+    this.smooth = options.smooth ?? false;
+    this.round = options.round ?? true;
   }
 
   fetchTile(
@@ -171,6 +175,8 @@ export class LocalDemManager implements DemManager {
       elevationKey = "ele",
       levelKey = "level",
       subsampleBelow = 100,
+      smooth = false,
+      round = true,
     } = options;
 
     // no levels means less than min zoom with levels specified
@@ -224,6 +230,8 @@ export class LocalDemManager implements DemManager {
           virtualTile,
           extent,
           buffer,
+          smooth,
+          round,
         );
 
         mark?.();
