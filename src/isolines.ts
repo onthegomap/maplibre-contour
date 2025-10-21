@@ -59,7 +59,7 @@ class Fragment {
   }
 
   toArrayRounded() {
-    return this.points.map(coord => Math.round(coord));
+    return this.points.map((coord) => Math.round(coord));
   }
 }
 
@@ -174,12 +174,12 @@ function ratio(a: number, b: number, c: number) {
 // Applies simple averaging between consecutive points
 function smoothLinear(points: number[]): number[] {
   if (points.length <= 4) return points; // Need at least 2 points to smooth
-  
+
   const smoothed: number[] = [];
-  
+
   // Keep first point as-is
   smoothed.push(points[0], points[1]);
-  
+
   // Interpolate middle points
   for (let i = 2; i < points.length - 2; i += 2) {
     const prevX = points[i - 2];
@@ -188,17 +188,17 @@ function smoothLinear(points: number[]): number[] {
     const currY = points[i + 1];
     const nextX = points[i + 2];
     const nextY = points[i + 3];
-    
+
     // Simple linear interpolation: average of neighbors
     smoothed.push(
       (prevX + currX * 2 + nextX) / 4,
-      (prevY + currY * 2 + nextY) / 4
+      (prevY + currY * 2 + nextY) / 4,
     );
   }
-  
+
   // Keep last point as-is
   smoothed.push(points[points.length - 2], points[points.length - 1]);
-  
+
   return smoothed;
 }
 
@@ -323,7 +323,7 @@ export default function generateIsolines(
                     line = smoothLinear(line);
                   }
                   if (round) {
-                    line = line.map(coord => Math.round(coord));
+                    line = line.map((coord) => Math.round(coord));
                   }
                   list.push(line);
                 }
@@ -368,7 +368,7 @@ export default function generateIsolines(
           line = smoothLinear(line);
         }
         if (round) {
-          line = line.map(coord => Math.round(coord));
+          line = line.map((coord) => Math.round(coord));
         }
         list.push(line);
       }
