@@ -172,32 +172,127 @@ function ratio(a: number, b: number, c: number) {
 
 // CHANGE 2: Linear interpolation smoothing function
 // Applies simple averaging between consecutive points
-function smoothLinear(points: number[]): number[] {
+function smoothLinear(points: number[], iterations: number = 1): number[] {
   if (points.length <= 4) return points; // Need at least 2 points to smooth
+
+  let result = points;
+
+  // Apply smoothing multiple times for stronger effect
+  for (let iter = 0; iter < iterations; iter++) {
+    const smoothed: number[] = [];
+
+    // Keep first point as-is
+    smoothed.push(result[0], result[1]);
+
+    // Interpolate middle points
+    for (let i = 2; i < result.length - 2; i += 2) {
+      const prevX = result[i - 2];
+      const prevY = result[i - 1];
+      const currX = result[i];
+      const currY = result[i + 1];
+      const nextX = result[i + 2];
+      const nextY = result[i + 3];
+
+      // Simple linear interpolation: average of neighbors
+      smoothed.push(
+        (prevX + currX * 2 + nextX) / 4,
+        (prevY + currY * 2 + nextY) / 4,
+      );
+    }
+
+    // Keep last point as-is
+    smoothed.push(result[result.length - 2], result[result.length - 1]);
+
+    result = smoothed;
+  }
+
+  return result;
+}
+
+// Chaikin's corner-cutting algorithm - produces very smooth curves
+function smoothChaikin(points: number[], iterations: number = 1): number[] {
+  if (points.length <= 4) return points;
+
+  let result = points;
+
+  for (let iter = 0; iter < iterations; iter++) {
+    const smoothed: number[] = [];
+
+    // Keep first point
+    smoothed.push(result[0], result[1]);
+
+    // For each segment, create two new points at 1/4 and 3/4 positions
+    for (let i = 0; i < result.length - 2; i += 2) {
+      const x1 = result[i];
+      const y1 = result[i + 1];
+      const x2 = result[i + 2];
+      const y2 = result[i + 3];
+
+      // Point at 1/4 of the way from p1 to p2
+      smoothed.push(0.75 * x1 + 0.25 * x2, 0.75 * y1 + 0.25 * y2);
+
+      // Point at 3/4 of the way from p1 to p2
+      smoothed.push(0.25 * x1 + 0.75 * x2, 0.25 * y1 + 0.75 * y2);
+    }
+
+    // Keep last point
+    smoothed.push(result[result.length - 2], result[result.length - 1]);
+
+    result = smoothed;
+  }
+
+  return result;
+}
+
+// Catmull-Rom spline interpolation - smooth curves through all points
+function smoothCatmullRom(points: number[], tension: number = 0.5): number[] {
+  if (points.length <= 4) return points;
 
   const smoothed: number[] = [];
 
-  // Keep first point as-is
+  // Keep first point
   smoothed.push(points[0], points[1]);
 
-  // Interpolate middle points
-  for (let i = 2; i < points.length - 2; i += 2) {
-    const prevX = points[i - 2];
-    const prevY = points[i - 1];
-    const currX = points[i];
-    const currY = points[i + 1];
-    const nextX = points[i + 2];
-    const nextY = points[i + 3];
+  // Generate interpolated points between each pair
+  for (let i = 0; i < points.length - 2; i += 2) {
+    const p0x = i === 0 ? points[0] : points[i - 2];
+    const p0y = i === 0 ? points[1] : points[i - 1];
+    const p1x = points[i];
+    const p1y = points[i + 1];
+    const p2x = points[i + 2];
+    const p2y = points[i + 3];
+    const p3x =
+      i + 4 >= points.length ? points[points.length - 2] : points[i + 4];
+    const p3y =
+      i + 4 >= points.length ? points[points.length - 1] : points[i + 5];
 
-    // Simple linear interpolation: average of neighbors
-    smoothed.push(
-      (prevX + currX * 2 + nextX) / 4,
-      (prevY + currY * 2 + nextY) / 4,
-    );
+    // Add points along the curve segment
+    const segments = 4; // Number of points to add between each pair
+    for (let t = 0; t <= segments; t++) {
+      const t_norm = t / segments;
+      const t2 = t_norm * t_norm;
+      const t3 = t2 * t_norm;
+
+      const x =
+        0.5 *
+        (2 * p1x +
+          (-p0x + p2x) * t_norm +
+          (2 * p0x - 5 * p1x + 4 * p2x - p3x) * t2 +
+          (-p0x + 3 * p1x - 3 * p2x + p3x) * t3);
+
+      const y =
+        0.5 *
+        (2 * p1y +
+          (-p0y + p2y) * t_norm +
+          (2 * p0y - 5 * p1y + 4 * p2y - p3y) * t2 +
+          (-p0y + 3 * p1y - 3 * p2y + p3y) * t3);
+
+      if (t > 0 || i === 0) {
+        // Skip duplicates
+        smoothed.push(x, y);
+      }
+    }
   }
-
-  // Keep last point as-is
-  smoothed.push(points[points.length - 2], points[points.length - 1]);
 
   return smoothed;
 }
@@ -209,7 +304,8 @@ function smoothLinear(points: number[]): number[] {
  * @param tile The input height tile, where values represent the height at the top-left of each pixel
  * @param extent Vector tile extent (default 4096)
  * @param buffer How many pixels into each neighboring tile to include in a tile
- * @param smooth Apply linear interpolation smoothing to contour lines (default false)
+ * @param smooth Apply smoothing to contour lines: 'none' = no smoothing, 'linear' = weighted average, 'chaikin' = corner cutting, 'catmull-rom' = spline interpolation (default none)
+ * @param smoothIterations Number of times to apply smoothing (default 1, higher = smoother but more processing)
  * @param round Round final coordinates to integers for vector tile encoding (default true)
  * @returns an object where keys are the elevation, and values are a list of `[x1, y1, x2, y2, ...]`
  * contour lines in tile coordinates
@@ -219,8 +315,9 @@ export default function generateIsolines(
   tile: HeightTile,
   extent: number = 4096,
   buffer: number = 1,
-  smooth: boolean = false,
-  round: boolean = true, // CHANGE: Add round parameter, default true for backward compatibility
+  smooth: "none" | "linear" | "chaikin" | "catmull-rom" = "none",
+  smoothIterations: number = 1,
+  round: boolean = true,
 ): { [ele: number]: number[][] } {
   if (!interval) {
     return {};
@@ -319,8 +416,8 @@ export default function generateIsolines(
                   }
                   // Apply smoothing if enabled, then round if requested
                   let line = f.lineString(false); // Get unrounded coordinates
-                  if (smooth) {
-                    line = smoothLinear(line);
+                  if (smooth !== "none") {
+                    line = applySmoothing(line, smooth, smoothIterations);
                   }
                   if (round) {
                     line = line.map((coord) => Math.round(coord));
@@ -362,10 +459,9 @@ export default function generateIsolines(
         if (list == null) {
           list = segments[level] || (segments[level] = []);
         }
-        // Apply smoothing if enabled, then round if requested
-        let line = value.lineString(false); // Get unrounded coordinates
-        if (smooth) {
-          line = smoothLinear(line);
+        let line = value.lineString(false);
+        if (smooth !== "none") {
+          line = applySmoothing(line, smooth, smoothIterations);
         }
         if (round) {
           line = line.map((coord) => Math.round(coord));
@@ -376,4 +472,22 @@ export default function generateIsolines(
   }
 
   return segments;
+}
+
+// Helper function to apply the selected smoothing algorithm
+function applySmoothing(
+  points: number[],
+  method: "linear" | "chaikin" | "catmull-rom",
+  iterations: number,
+): number[] {
+  switch (method) {
+    case "linear":
+      return smoothLinear(points, iterations);
+    case "chaikin":
+      return smoothChaikin(points, iterations);
+    case "catmull-rom":
+      return smoothCatmullRom(points);
+    default:
+      return points;
+  }
 }
