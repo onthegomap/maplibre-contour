@@ -32,15 +32,17 @@ class Fragment {
   }
 
   append(x: number, y: number) {
-    this.points.push(Math.round(x), Math.round(y));
+    // CHANGE 1: Preserve coordinate precision during calculation
+    this.points.push(x, y);
   }
 
   prepend(x: number, y: number) {
-    this.points.splice(0, 0, Math.round(x), Math.round(y));
+    // CHANGE 1: Preserve coordinate precision during calculation
+    this.points.splice(0, 0, x, y);
   }
 
-  lineString() {
-    return this.toArray();
+  lineString(round: boolean = false) {
+    return round ? this.toArrayRounded() : this.toArray();
   }
 
   isEmpty() {
@@ -54,6 +56,10 @@ class Fragment {
 
   toArray() {
     return this.points;
+  }
+
+  toArrayRounded() {
+    return this.points.map(coord => Math.round(coord));
   }
 }
 
@@ -164,6 +170,38 @@ function ratio(a: number, b: number, c: number) {
   return (b - a) / (c - a);
 }
 
+// CHANGE 2: Linear interpolation smoothing function
+// Applies simple averaging between consecutive points
+function smoothLinear(points: number[]): number[] {
+  if (points.length <= 4) return points; // Need at least 2 points to smooth
+  
+  const smoothed: number[] = [];
+  
+  // Keep first point as-is
+  smoothed.push(points[0], points[1]);
+  
+  // Interpolate middle points
+  for (let i = 2; i < points.length - 2; i += 2) {
+    const prevX = points[i - 2];
+    const prevY = points[i - 1];
+    const currX = points[i];
+    const currY = points[i + 1];
+    const nextX = points[i + 2];
+    const nextY = points[i + 3];
+    
+    // Simple linear interpolation: average of neighbors
+    smoothed.push(
+      (prevX + currX * 2 + nextX) / 4,
+      (prevY + currY * 2 + nextY) / 4
+    );
+  }
+  
+  // Keep last point as-is
+  smoothed.push(points[points.length - 2], points[points.length - 1]);
+  
+  return smoothed;
+}
+
 /**
  * Generates contour lines from a HeightTile
  *
@@ -171,6 +209,8 @@ function ratio(a: number, b: number, c: number) {
  * @param tile The input height tile, where values represent the height at the top-left of each pixel
  * @param extent Vector tile extent (default 4096)
  * @param buffer How many pixels into each neighboring tile to include in a tile
+ * @param smooth Apply linear interpolation smoothing to contour lines (default false)
+ * @param round Round final coordinates to integers for vector tile encoding (default true)
  * @returns an object where keys are the elevation, and values are a list of `[x1, y1, x2, y2, ...]`
  * contour lines in tile coordinates
  */
@@ -179,6 +219,8 @@ export default function generateIsolines(
   tile: HeightTile,
   extent: number = 4096,
   buffer: number = 1,
+  smooth: boolean = false,
+  round: boolean = true, // CHANGE: Add round parameter, default true for backward compatibility
 ): { [ele: number]: number[][] } {
   if (!interval) {
     return {};
@@ -275,7 +317,15 @@ export default function generateIsolines(
                   if (!list) {
                     segments[threshold] = list = [];
                   }
-                  list.push(f.lineString());
+                  // Apply smoothing if enabled, then round if requested
+                  let line = f.lineString(false); // Get unrounded coordinates
+                  if (smooth) {
+                    line = smoothLinear(line);
+                  }
+                  if (round) {
+                    line = line.map(coord => Math.round(coord));
+                  }
+                  list.push(line);
                 }
               } else {
                 // connecting 2 segments
@@ -312,7 +362,15 @@ export default function generateIsolines(
         if (list == null) {
           list = segments[level] || (segments[level] = []);
         }
-        list.push(value.lineString());
+        // Apply smoothing if enabled, then round if requested
+        let line = value.lineString(false); // Get unrounded coordinates
+        if (smooth) {
+          line = smoothLinear(line);
+        }
+        if (round) {
+          line = line.map(coord => Math.round(coord));
+        }
+        list.push(line);
       }
     }
   }
