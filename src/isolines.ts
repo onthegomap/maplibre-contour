@@ -404,6 +404,13 @@ function smoothBezier(
     }
   }
 
+  // Add the final point
+  if (closed) {
+    smoothed.push(smoothed[0], smoothed[1]);
+  } else {
+    smoothed.push(points[points.length - 2], points[points.length - 1]);
+  }
+
   return smoothed;
 }
 
@@ -522,7 +529,7 @@ export default function generateIsolines(
                   if (!list) {
                     segments[threshold] = list = [];
                   }
-                  // Apply smoothing if enabled, then round if requested
+                  // Apply smoothing if enabled, then round for vector tiles
                   let line = f.lineString();
                   if (smooth !== "none") {
                     line = applySmoothing(line, smooth, smoothIterations);
@@ -590,9 +597,11 @@ function applySmoothing(
     case "chaikin":
       return smoothChaikin(points, iterations);
     case "catmull-rom":
-      return smoothCatmullRom(points, 0.5);
+      // For catmull-rom, iterations controls segmentsPerPoint (interpolation density)
+      return smoothCatmullRom(points, 0.5, iterations);
     case "bezier":
-      return smoothBezier(points);
+      // For bezier, iterations controls segmentsPerPoint (interpolation density)
+      return smoothBezier(points, iterations);
     default:
       return points;
   }
