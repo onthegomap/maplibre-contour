@@ -170,22 +170,44 @@ function ratio(a: number, b: number, c: number) {
   return (b - a) / (c - a);
 }
 
-// CHANGE 2: Linear interpolation smoothing function
-// Applies simple averaging between consecutive points
+// Helper to check if a contour is a closed loop (start and end indexes are the same)
+function isClosed(points: number[]): boolean {
+  return (
+    points[0] === points[points.length - 2] &&
+    points[1] === points[points.length - 1]
+  );
+}
+
+/**
+ * Iterative Laplacian Smoothing (Moving average for visible smoothing)
+ */
 function smoothLinear(points: number[], iterations: number = 1): number[] {
   if (points.length <= 4) return points; // Need at least 2 points to smooth
 
   let result = points;
+  const closed = isClosed(points);
 
   // Apply smoothing multiple times for stronger effect
   for (let iter = 0; iter < iterations; iter++) {
     const smoothed: number[] = [];
 
-    // Keep first point as-is
-    smoothed.push(result[0], result[1]);
+    if (closed) {
+      // If closed, use the last point as the 'previous' for the first point
+      const p0x = result[result.length - 4];
+      const p0y = result[result.length - 3];
+      const p1x = result[0];
+      const p1y = result[1];
+      const p2x = result[2];
+      const p2y = result[3];
+      smoothed.push((p0x + p1x * 2 + p2x) / 4, (p0y + p1y * 2 + p2y) / 4);
+    } else {
+      // Keep first point as-is for open lines
+      smoothed.push(result[0], result[1]);
+    }
 
     // Interpolate middle points
-    for (let i = 2; i < result.length - 2; i += 2) {
+    const limit = closed ? result.length - 2 : result.length - 4;
+    for (let i = 2; i < limit; i += 2) {
       const prevX = result[i - 2];
       const prevY = result[i - 1];
       const currX = result[i];
@@ -200,8 +222,21 @@ function smoothLinear(points: number[], iterations: number = 1): number[] {
       );
     }
 
-    // Keep last point as-is
-    smoothed.push(result[result.length - 2], result[result.length - 1]);
+    if (closed) {
+      // For the last unique point (which is the one before the closing point)
+      const p0x = result[result.length - 6];
+      const p0y = result[result.length - 5];
+      const p1x = result[result.length - 4];
+      const p1y = result[result.length - 3];
+      const p2x = result[0]; // Next point is the start
+      const p2y = result[1];
+      smoothed.push((p0x + p1x * 2 + p2x) / 4, (p0y + p1y * 2 + p2y) / 4);
+      // Add closing point to match the start point
+      smoothed.push(smoothed[0], smoothed[1]);
+    } else {
+      // Keep last point as-is for open lines
+      smoothed.push(result[result.length - 2], result[result.length - 1]);
+    }
 
     result = smoothed;
   }
@@ -214,19 +249,22 @@ function smoothChaikin(points: number[], iterations: number = 1): number[] {
   if (points.length <= 4) return points;
 
   let result = points;
+  const closed = isClosed(points);
 
   for (let iter = 0; iter < iterations; iter++) {
     const smoothed: number[] = [];
 
-    // Keep first point
-    smoothed.push(result[0], result[1]);
+    // Start and end handling for closed vs open
+    const limit = closed ? result.length - 2 : result.length;
 
-    // For each segment, create two new points at 1/4 and 3/4 positions
-    for (let i = 0; i < result.length - 2; i += 2) {
+    for (let i = 0; i < limit; i += 2) {
       const x1 = result[i];
       const y1 = result[i + 1];
-      const x2 = result[i + 2];
-      const y2 = result[i + 3];
+
+      // Get the next point, handling wrap-around for closed loops
+      const i2 = (i + 2) % result.length;
+      const x2 = result[i2];
+      const y2 = result[i2 + 1];
 
       // Point at 1/4 of the way from p1 to p2
       smoothed.push(0.75 * x1 + 0.25 * x2, 0.75 * y1 + 0.25 * y2);
@@ -235,8 +273,15 @@ function smoothChaikin(points: number[], iterations: number = 1): number[] {
       smoothed.push(0.25 * x1 + 0.75 * x2, 0.25 * y1 + 0.75 * y2);
     }
 
-    // Keep last point
-    smoothed.push(result[result.length - 2], result[result.length - 1]);
+    if (!closed) {
+      // For open lines, keep the start and end points
+      smoothed.splice(0, 0, result[0], result[1]);
+      smoothed.push(result[result.length - 2], result[result.length - 1]);
+    } else {
+      // For closed lines, the last segment's points will correctly meet the first segment's points.
+      // Add the closing point
+      smoothed.push(smoothed[0], smoothed[1]);
+    }
 
     result = smoothed;
   }
@@ -244,53 +289,124 @@ function smoothChaikin(points: number[], iterations: number = 1): number[] {
   return result;
 }
 
-// Catmull-Rom spline interpolation - smooth curves through all points
-function smoothCatmullRom(points: number[], tension: number = 0.5): number[] {
+/**
+ * Catmull-Rom spline interpolation.
+ */
+function smoothCatmullRom(
+  points: number[],
+  tension: number = 0.5,
+  segmentsPerPoint: number = 8,
+): number[] {
   if (points.length <= 4) return points;
 
   const smoothed: number[] = [];
+  const closed = isClosed(points);
 
-  // Keep first point
-  smoothed.push(points[0], points[1]);
+  // The Catmull-Rom formula is based on 4 points (P0, P1, P2, P3) to interpolate between P1 and P2.
+  const numPoints = closed ? points.length - 2 : points.length;
 
-  // Generate interpolated points between each pair
-  for (let i = 0; i < points.length - 2; i += 2) {
-    const p0x = i === 0 ? points[0] : points[i - 2];
-    const p0y = i === 0 ? points[1] : points[i - 1];
+  for (let i = 0; i < numPoints; i += 2) {
+    // P1 is the current point (i)
     const p1x = points[i];
     const p1y = points[i + 1];
-    const p2x = points[i + 2];
-    const p2y = points[i + 3];
-    const p3x =
-      i + 4 >= points.length ? points[points.length - 2] : points[i + 4];
-    const p3y =
-      i + 4 >= points.length ? points[points.length - 1] : points[i + 5];
+
+    // P2 is the next point (i+2)
+    const i2 = (i + 2) % (closed ? numPoints : points.length);
+    const p2x = points[i2];
+    const p2y = points[i2 + 1];
+
+    // P0 is the point before P1
+    let i0;
+    if (i === 0) {
+      if (closed) {
+        i0 = numPoints - 2;
+      } else {
+        i0 = 0; // Clamp to P1
+      }
+    } else {
+      i0 = i - 2;
+    }
+    const p0x = points[i0];
+    const p0y = points[i0 + 1];
+
+    // P3 is the point after P2
+    let i3;
+    const numLimit = closed ? numPoints : points.length;
+    if (i2 >= numLimit - 2) {
+      if (closed) {
+        i3 = (i2 + 2) % numPoints;
+      } else {
+        i3 = numLimit - 2; // Clamp to P2
+      }
+    } else {
+      i3 = i2 + 2;
+    }
+    const p3x = points[i3];
+    const p3y = points[i3 + 1];
 
     // Add points along the curve segment
-    const segments = 4; // Number of points to add between each pair
-    for (let t = 0; t <= segments; t++) {
-      const t_norm = t / segments;
+    for (let t = 0; t < segmentsPerPoint; t++) {
+      const t_norm = t / segmentsPerPoint;
       const t2 = t_norm * t_norm;
       const t3 = t2 * t_norm;
 
-      const x =
-        0.5 *
-        (2 * p1x +
-          (-p0x + p2x) * t_norm +
-          (2 * p0x - 5 * p1x + 4 * p2x - p3x) * t2 +
-          (-p0x + 3 * p1x - 3 * p2x + p3x) * t3);
+      // Catmull-Rom basis matrix terms
+      const c1 = 2 * p1x;
+      const c2 = (-p0x + p2x) * tension;
+      const c3 = (2 * p0x - 5 * p1x + 4 * p2x - p3x) * tension;
+      const c4 = (-p0x + 3 * p1x - 3 * p2x + p3x) * tension;
 
-      const y =
-        0.5 *
-        (2 * p1y +
-          (-p0y + p2y) * t_norm +
-          (2 * p0y - 5 * p1y + 4 * p2y - p3y) * t2 +
-          (-p0y + 3 * p1y - 3 * p2y + p3y) * t3);
+      const x = 0.5 * (c1 + c2 * t_norm + c3 * t2 + c4 * t3);
 
-      if (t > 0 || i === 0) {
-        // Skip duplicates
-        smoothed.push(x, y);
-      }
+      const d1 = 2 * p1y;
+      const d2 = (-p0y + p2y) * tension;
+      const d3 = (2 * p0y - 5 * p1y + 4 * p2y - p3y) * tension;
+      const d4 = (-p0y + 3 * p1y - 3 * p2y + p3y) * tension;
+
+      const y = 0.5 * (d1 + d2 * t_norm + d3 * t2 + d4 * t3);
+
+      smoothed.push(x, y);
+    }
+  }
+
+  // Add the final point (which is the start point if closed)
+  if (closed) {
+    smoothed.push(smoothed[0], smoothed[1]);
+  } else {
+    smoothed.push(points[points.length - 2], points[points.length - 1]);
+  }
+
+  return smoothed;
+}
+
+/**
+ * A simple high-resolution linear interpolation / point-doubling method.
+ */
+function smoothBezier(
+  points: number[],
+  segmentsPerPoint: number = 4,
+): number[] {
+  if (points.length <= 4) return points;
+
+  const smoothed: number[] = [];
+  const closed = isClosed(points);
+
+  const limit = closed ? points.length - 2 : points.length - 2;
+
+  for (let i = 0; i < limit; i += 2) {
+    const x1 = points[i];
+    const y1 = points[i + 1];
+
+    const i2 = (i + 2) % (closed ? points.length - 2 : points.length);
+    const x2 = points[i2];
+    const y2 = points[i2 + 1];
+
+    // Add points along the segment
+    for (let t = 0; t < segmentsPerPoint; t++) {
+      const t_norm = t / segmentsPerPoint;
+      const x = x1 * (1 - t_norm) + x2 * t_norm;
+      const y = y1 * (1 - t_norm) + y2 * t_norm;
+      smoothed.push(x, y);
     }
   }
 
@@ -315,7 +431,7 @@ export default function generateIsolines(
   tile: HeightTile,
   extent: number = 4096,
   buffer: number = 1,
-  smooth: "none" | "linear" | "chaikin" | "catmull-rom" = "none",
+  smooth: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier" = "none",
   smoothIterations: number = 1,
   round: boolean = true,
 ): { [ele: number]: number[][] } {
@@ -477,7 +593,7 @@ export default function generateIsolines(
 // Helper function to apply the selected smoothing algorithm
 function applySmoothing(
   points: number[],
-  method: "linear" | "chaikin" | "catmull-rom",
+  method: "linear" | "chaikin" | "catmull-rom" | "bezier",
   iterations: number,
 ): number[] {
   switch (method) {
@@ -486,7 +602,9 @@ function applySmoothing(
     case "chaikin":
       return smoothChaikin(points, iterations);
     case "catmull-rom":
-      return smoothCatmullRom(points);
+      return smoothCatmullRom(points, 0.5);
+    case "bezier":
+      return smoothBezier(points);
     default:
       return points;
   }

@@ -58,7 +58,7 @@ export interface ContourTileOptions {
   /** When overzooming tiles, subsample to scale up to at least this size to make the contour lines smoother at higher zooms. */
   subsampleBelow?: number;
   /** Apply smoothing to contour lines: 'none' = no smoothing, 'linear' = weighted average, 'chaikin' = corner cutting, 'catmull-rom' = spline interpolation (default none) */
-  smooth?: "none" | "linear" | "chaikin" | "catmull-rom";
+  smooth?: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier";
   /** Number of times to apply smoothing algorithm (default 1, higher = smoother but more processing) */
   smoothIterations?: number;
   /** Round final coordinates to integers for vector tile encoding (default true) */
@@ -163,7 +163,7 @@ export type DemManagerRequiredInitializationParameters = {
   encoding: Encoding;
   maxzoom: number;
   timeoutMs: number;
-  smooth?: "none" | "linear" | "chaikin" | "catmull-rom";
+  smooth?: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier";
   smoothIterations?: number;
   round?: boolean;
 };

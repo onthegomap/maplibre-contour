@@ -49,9 +49,8 @@ export class LocalDemManager implements DemManager {
   loaded = Promise.resolve();
   decodeImage: DecodeImageFunction;
   getTile: GetTileFunction;
-  smooth: "none" | "linear" | "chaikin" | "catmull-rom";
+  smooth: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier";
   smoothIterations: number;
-  round: boolean;
 
   constructor(options: DemManagerInitizlizationParameters) {
     this.tileCache = new AsyncCache(options.cacheSize);
@@ -64,8 +63,7 @@ export class LocalDemManager implements DemManager {
     this.decodeImage = options.decodeImage || defaultDecodeImage;
     this.getTile = options.getTile || defaultGetTile;
     this.smooth = typeof options.smooth === "string" ? options.smooth : "none";
-    this.smoothIterations = options.smoothIterations ?? 1;
-    this.round = options.round ?? true;
+    this.smoothIterations = options.smoothIterations ?? 3;
   }
 
   fetchTile(
@@ -179,10 +177,8 @@ export class LocalDemManager implements DemManager {
       subsampleBelow = 100,
       smooth = this.smooth,
       smoothIterations = this.smoothIterations,
-      round = this.round,
-    } = options;
+    } = options; // no levels means less than min zoom with levels specified
 
-    // no levels means less than min zoom with levels specified
     if (!levels || levels.length === 0) {
       return Promise.resolve({ arrayBuffer: new ArrayBuffer(0) });
     }
@@ -235,7 +231,6 @@ export class LocalDemManager implements DemManager {
           buffer,
           smooth,
           smoothIterations,
-          round,
         );
 
         mark?.();
