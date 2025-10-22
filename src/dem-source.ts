@@ -106,6 +106,8 @@ export class DemSource {
     maxzoom = 12,
     worker = true,
     timeoutMs = 10_000,
+    smooth = "none",
+    smoothIterations = 3,
     actor,
   }: {
     /** Remote DEM tile url using `{z}` `{x}` and `{y}` placeholders */
@@ -118,6 +120,10 @@ export class DemSource {
     /** Maximum zoom of tiles contained in the source */
     maxzoom: number;
     timeoutMs?: number;
+    /** Smoothing algorithm to apply to contour lines */
+    smooth?: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier";
+    /** Number of smoothing iterations to apply */
+    smoothIterations?: number;
     /** Handle requests in a shared web worker to reduce UI-thread jank */
     worker?: boolean;
     actor?: Actor<WorkerDispatch>;
@@ -139,6 +145,8 @@ export class DemSource {
       encoding,
       maxzoom,
       timeoutMs,
+      smooth,
+      smoothIterations,
       actor,
     });
   }
