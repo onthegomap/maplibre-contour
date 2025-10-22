@@ -61,8 +61,6 @@ export interface ContourTileOptions {
   smooth?: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier";
   /** Number of times to apply smoothing algorithm (default 1, higher = smoother but more processing) */
   smoothIterations?: number;
-  /** Round final coordinates to integers for vector tile encoding (default true) */
-  round?: boolean;
 }
 
 export interface GlobalContourTileOptions extends ContourTileOptions {
@@ -165,7 +163,6 @@ export type DemManagerRequiredInitializationParameters = {
   timeoutMs: number;
   smooth?: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier";
   smoothIterations?: number;
-  round?: boolean;
 };
 
 export type DemManagerInitizlizationParameters =
