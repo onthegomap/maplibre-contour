@@ -418,7 +418,6 @@ function smoothBezier(
  * @param buffer How many pixels into each neighboring tile to include in a tile
  * @param smooth Apply smoothing to contour lines: 'none' = no smoothing, 'linear' = weighted average, 'chaikin' = corner cutting, 'catmull-rom' = spline interpolation, 'bezier' = linear interpolation upsampling (default none)
  * @param smoothIterations Number of times to apply smoothing (default 1, higher = smoother but more processing)
- * @param round Round final coordinates to integers for vector tile encoding (default true)
  * @returns an object where keys are the elevation, and values are a list of `[x1, y1, x2, y2, ...]`
  * contour lines in tile coordinates
  */
@@ -429,7 +428,6 @@ export default function generateIsolines(
   buffer: number = 1,
   smooth: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier" = "none",
   smoothIterations: number = 1,
-  round: boolean = true,
 ): { [ele: number]: number[][] } {
   if (!interval) {
     return {};
