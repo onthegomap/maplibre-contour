@@ -41,8 +41,12 @@ class Fragment {
     this.points.splice(0, 0, x, y);
   }
 
-  lineString(round: boolean = false) {
-    return round ? this.toArrayRounded() : this.toArray();
+  lineString() {
+    return this.toArray();
+  }
+
+  toArray() {
+    return this.points;
   }
 
   isEmpty() {
@@ -52,14 +56,6 @@ class Fragment {
   appendFragment(other: Fragment) {
     this.points.push(...other.points);
     this.end = other.end;
-  }
-
-  toArray() {
-    return this.points;
-  }
-
-  toArrayRounded() {
-    return this.points.map((coord) => Math.round(coord));
   }
 }
 
@@ -531,13 +527,11 @@ export default function generateIsolines(
                     segments[threshold] = list = [];
                   }
                   // Apply smoothing if enabled, then round if requested
-                  let line = f.lineString(false); // Get unrounded coordinates
+                  let line = f.lineString();
                   if (smooth !== "none") {
                     line = applySmoothing(line, smooth, smoothIterations);
                   }
-                  if (round) {
-                    line = line.map((coord) => Math.round(coord));
-                  }
+                  line = line.map((coord) => Math.round(coord));
                   list.push(line);
                 }
               } else {
@@ -575,13 +569,11 @@ export default function generateIsolines(
         if (list == null) {
           list = segments[level] || (segments[level] = []);
         }
-        let line = value.lineString(false);
+        let line = value.lineString();
         if (smooth !== "none") {
           line = applySmoothing(line, smooth, smoothIterations);
         }
-        if (round) {
-          line = line.map((coord) => Math.round(coord));
-        }
+        line = line.map((coord) => Math.round(coord));
         list.push(line);
       }
     }
