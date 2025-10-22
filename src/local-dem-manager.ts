@@ -45,25 +45,25 @@ export class LocalDemManager implements DemManager {
   demUrlPattern: string;
   encoding: Encoding;
   maxzoom: number;
+  smooth: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier";
+  smoothIterations: number;
   timeoutMs: number;
   loaded = Promise.resolve();
   decodeImage: DecodeImageFunction;
   getTile: GetTileFunction;
-  smooth: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier";
-  smoothIterations: number;
 
   constructor(options: DemManagerInitizlizationParameters) {
     this.tileCache = new AsyncCache(options.cacheSize);
     this.parsedCache = new AsyncCache(options.cacheSize);
     this.contourCache = new AsyncCache(options.cacheSize);
-    this.timeoutMs = options.timeoutMs;
     this.demUrlPattern = options.demUrlPattern;
     this.encoding = options.encoding;
     this.maxzoom = options.maxzoom;
-    this.decodeImage = options.decodeImage || defaultDecodeImage;
-    this.getTile = options.getTile || defaultGetTile;
     this.smooth = typeof options.smooth === "string" ? options.smooth : "none";
     this.smoothIterations = options.smoothIterations ?? 3;
+    this.timeoutMs = options.timeoutMs;
+    this.decodeImage = options.decodeImage || defaultDecodeImage;
+    this.getTile = options.getTile || defaultGetTile;
   }
 
   fetchTile(
