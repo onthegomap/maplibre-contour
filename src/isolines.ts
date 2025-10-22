@@ -32,12 +32,10 @@ class Fragment {
   }
 
   append(x: number, y: number) {
-    // CHANGE 1: Preserve coordinate precision during calculation
     this.points.push(x, y);
   }
 
   prepend(x: number, y: number) {
-    // CHANGE 1: Preserve coordinate precision during calculation
     this.points.splice(0, 0, x, y);
   }
 
