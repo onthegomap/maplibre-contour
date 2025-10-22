@@ -57,7 +57,7 @@ export interface ContourTileOptions {
   buffer?: number;
   /** When overzooming tiles, subsample to scale up to at least this size to make the contour lines smoother at higher zooms. */
   subsampleBelow?: number;
-  /** Apply smoothing to contour lines: 'none' = no smoothing, 'linear' = weighted average, 'chaikin' = corner cutting, 'catmull-rom' = spline interpolation (default none) */
+  /**  Apply smoothing to contour lines: 'none' = no smoothing, 'linear' = weighted average, 'chaikin' = corner cutting, 'catmull-rom' = spline interpolation, 'bezier' = linear interpolation upsampling (default none) */
   smooth?: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier";
   /** Number of times to apply smoothing algorithm (default 1, higher = smoother but more processing) */
   smoothIterations?: number;
