@@ -32,15 +32,19 @@ class Fragment {
   }
 
   append(x: number, y: number) {
-    this.points.push(Math.round(x), Math.round(y));
+    this.points.push(x, y);
   }
 
   prepend(x: number, y: number) {
-    this.points.splice(0, 0, Math.round(x), Math.round(y));
+    this.points.splice(0, 0, x, y);
   }
 
   lineString() {
     return this.toArray();
+  }
+
+  toArray() {
+    return this.points;
   }
 
   isEmpty() {
@@ -50,10 +54,6 @@ class Fragment {
   appendFragment(other: Fragment) {
     this.points.push(...other.points);
     this.end = other.end;
-  }
-
-  toArray() {
-    return this.points;
   }
 }
 
@@ -164,6 +164,353 @@ function ratio(a: number, b: number, c: number) {
   return (b - a) / (c - a);
 }
 
+// Helper to check if a contour is a closed loop (start and end indexes are the same)
+function isClosed(points: number[]): boolean {
+  return (
+    points[0] === points[points.length - 2] &&
+    points[1] === points[points.length - 1]
+  );
+}
+
+// Helper to check if a point is on the tile boundary
+function isOnBoundary(x: number, y: number, extent: number): boolean {
+  const threshold = 0.5; // Small threshold to catch edge points
+  return (
+    x < threshold ||
+    x > extent - threshold ||
+    y < threshold ||
+    y > extent - threshold
+  );
+}
+
+/**
+ * Iterative Laplacian Smoothing (Moving average for visible smoothing)
+ * Preserves boundary points to ensure tile alignment
+ */
+function smoothLinear(
+  points: number[],
+  iterations: number = 1,
+  extent: number = 4096,
+): number[] {
+  if (points.length <= 4) return points; // Need at least 2 points to smooth
+
+  let result = points;
+  const closed = isClosed(points);
+
+  // Apply smoothing multiple times for stronger effect
+  for (let iter = 0; iter < iterations; iter++) {
+    const smoothed: number[] = [];
+
+    if (closed) {
+      // If closed, use the last point as the 'previous' for the first point
+      const p0x = result[result.length - 4];
+      const p0y = result[result.length - 3];
+      const p1x = result[0];
+      const p1y = result[1];
+      const p2x = result[2];
+      const p2y = result[3];
+
+      // Don't smooth if on boundary
+      if (isOnBoundary(p1x, p1y, extent)) {
+        smoothed.push(p1x, p1y);
+      } else {
+        smoothed.push((p0x + p1x * 2 + p2x) / 4, (p0y + p1y * 2 + p2y) / 4);
+      }
+    } else {
+      // Keep first point as-is for open lines
+      smoothed.push(result[0], result[1]);
+    }
+
+    // Interpolate middle points
+    const limit = closed ? result.length - 2 : result.length - 4;
+    for (let i = 2; i < limit; i += 2) {
+      const prevX = result[i - 2];
+      const prevY = result[i - 1];
+      const currX = result[i];
+      const currY = result[i + 1];
+      const nextX = result[i + 2];
+      const nextY = result[i + 3];
+
+      // Don't smooth points on the boundary
+      if (isOnBoundary(currX, currY, extent)) {
+        smoothed.push(currX, currY);
+      } else {
+        // Simple linear interpolation: average of neighbors
+        smoothed.push(
+          (prevX + currX * 2 + nextX) / 4,
+          (prevY + currY * 2 + nextY) / 4,
+        );
+      }
+    }
+
+    if (closed) {
+      // For the last unique point (which is the one before the closing point)
+      const p0x = result[result.length - 6];
+      const p0y = result[result.length - 5];
+      const p1x = result[result.length - 4];
+      const p1y = result[result.length - 3];
+      const p2x = result[0]; // Next point is the start
+      const p2y = result[1];
+
+      if (isOnBoundary(p1x, p1y, extent)) {
+        smoothed.push(p1x, p1y);
+      } else {
+        smoothed.push((p0x + p1x * 2 + p2x) / 4, (p0y + p1y * 2 + p2y) / 4);
+      }
+      // Add closing point to match the start point
+      smoothed.push(smoothed[0], smoothed[1]);
+    } else {
+      // Keep last point as-is for open lines
+      smoothed.push(result[result.length - 2], result[result.length - 1]);
+    }
+
+    result = smoothed;
+  }
+
+  return result;
+}
+
+// Chaikin's corner-cutting algorithm - produces very smooth curves
+// Preserves boundary points to ensure tile alignment
+function smoothChaikin(
+  points: number[],
+  iterations: number = 1,
+  extent: number = 4096,
+): number[] {
+  if (points.length <= 4) return points;
+
+  let result = points;
+  const closed = isClosed(points);
+
+  for (let iter = 0; iter < iterations; iter++) {
+    const smoothed: number[] = [];
+
+    // Start and end handling for closed vs open
+    const limit = closed ? result.length - 2 : result.length;
+
+    for (let i = 0; i < limit; i += 2) {
+      const x1 = result[i];
+      const y1 = result[i + 1];
+
+      // Get the next point, handling wrap-around for closed loops
+      const i2 = (i + 2) % result.length;
+      const x2 = result[i2];
+      const y2 = result[i2 + 1];
+
+      // Check if either endpoint is on boundary
+      const p1OnBoundary = isOnBoundary(x1, y1, extent);
+      const p2OnBoundary = isOnBoundary(x2, y2, extent);
+
+      if (p1OnBoundary && p2OnBoundary) {
+        // Both on boundary - keep both points as-is
+        smoothed.push(x1, y1);
+        // Don't add second point yet, will be added in next iteration
+      } else if (p1OnBoundary) {
+        // First point on boundary - keep it, smooth toward second
+        smoothed.push(x1, y1);
+        smoothed.push(0.25 * x1 + 0.75 * x2, 0.25 * y1 + 0.75 * y2);
+      } else if (p2OnBoundary) {
+        // Second point on boundary - smooth from first, keep second
+        smoothed.push(0.75 * x1 + 0.25 * x2, 0.75 * y1 + 0.25 * y2);
+        // Second point will be added in next iteration or at end
+      } else {
+        // Neither on boundary - normal Chaikin smoothing
+        // Point at 1/4 of the way from p1 to p2
+        smoothed.push(0.75 * x1 + 0.25 * x2, 0.75 * y1 + 0.25 * y2);
+        // Point at 3/4 of the way from p1 to p2
+        smoothed.push(0.25 * x1 + 0.75 * x2, 0.25 * y1 + 0.75 * y2);
+      }
+    }
+
+    if (!closed) {
+      // For open lines, ensure start and end points are preserved
+      if (!isOnBoundary(result[0], result[1], extent)) {
+        smoothed.splice(0, 0, result[0], result[1]);
+      }
+      const lastX = result[result.length - 2];
+      const lastY = result[result.length - 1];
+      if (!isOnBoundary(lastX, lastY, extent)) {
+        smoothed.push(lastX, lastY);
+      } else if (
+        smoothed[smoothed.length - 2] !== lastX ||
+        smoothed[smoothed.length - 1] !== lastY
+      ) {
+        smoothed.push(lastX, lastY);
+      }
+    } else {
+      // For closed lines, add the closing point
+      smoothed.push(smoothed[0], smoothed[1]);
+    }
+
+    result = smoothed;
+  }
+
+  return result;
+}
+
+/**
+ * Catmull-Rom spline interpolation.
+ * Preserves boundary points to ensure tile alignment
+ */
+function smoothCatmullRom(
+  points: number[],
+  tension: number = 0.5,
+  segmentsPerPoint: number = 8,
+  extent: number = 4096,
+): number[] {
+  if (points.length <= 4) return points;
+
+  const smoothed: number[] = [];
+  const closed = isClosed(points);
+
+  // The Catmull-Rom formula is based on 4 points (P0, P1, P2, P3) to interpolate between P1 and P2.
+  const numPoints = closed ? points.length - 2 : points.length;
+
+  for (let i = 0; i < numPoints; i += 2) {
+    // P1 is the current point (i)
+    const p1x = points[i];
+    const p1y = points[i + 1];
+
+    // P2 is the next point (i+2)
+    const i2 = (i + 2) % (closed ? numPoints : points.length);
+    const p2x = points[i2];
+    const p2y = points[i2 + 1];
+
+    // Check if segment endpoints are on boundary
+    const p1OnBoundary = isOnBoundary(p1x, p1y, extent);
+    const p2OnBoundary = isOnBoundary(p2x, p2y, extent);
+
+    // If both points are on boundary, just add straight line
+    if (p1OnBoundary && p2OnBoundary) {
+      smoothed.push(p1x, p1y);
+      continue;
+    }
+
+    // P0 is the point before P1
+    let i0;
+    if (i === 0) {
+      if (closed) {
+        i0 = numPoints - 2;
+      } else {
+        i0 = 0; // Clamp to P1
+      }
+    } else {
+      i0 = i - 2;
+    }
+    const p0x = points[i0];
+    const p0y = points[i0 + 1];
+
+    // P3 is the point after P2
+    let i3;
+    const numLimit = closed ? numPoints : points.length;
+    if (i2 >= numLimit - 2) {
+      if (closed) {
+        i3 = (i2 + 2) % numPoints;
+      } else {
+        i3 = numLimit - 2; // Clamp to P2
+      }
+    } else {
+      i3 = i2 + 2;
+    }
+    const p3x = points[i3];
+    const p3y = points[i3 + 1];
+
+    // Add points along the curve segment
+    const startT = p1OnBoundary ? 0 : 0;
+    const endT = p2OnBoundary ? segmentsPerPoint : segmentsPerPoint;
+
+    for (let t = startT; t < endT; t++) {
+      const t_norm = t / segmentsPerPoint;
+      const t2 = t_norm * t_norm;
+      const t3 = t2 * t_norm;
+
+      // Catmull-Rom basis matrix terms
+      const c1 = 2 * p1x;
+      const c2 = (-p0x + p2x) * tension;
+      const c3 = (2 * p0x - 5 * p1x + 4 * p2x - p3x) * tension;
+      const c4 = (-p0x + 3 * p1x - 3 * p2x + p3x) * tension;
+
+      const x = 0.5 * (c1 + c2 * t_norm + c3 * t2 + c4 * t3);
+
+      const d1 = 2 * p1y;
+      const d2 = (-p0y + p2y) * tension;
+      const d3 = (2 * p0y - 5 * p1y + 4 * p2y - p3y) * tension;
+      const d4 = (-p0y + 3 * p1y - 3 * p2y + p3y) * tension;
+
+      const y = 0.5 * (d1 + d2 * t_norm + d3 * t2 + d4 * t3);
+
+      // If this would create a boundary point, use exact boundary value
+      if (t === 0 && p1OnBoundary) {
+        smoothed.push(p1x, p1y);
+      } else {
+        smoothed.push(x, y);
+      }
+    }
+  }
+
+  // Add the final point (which is the start point if closed)
+  if (closed) {
+    smoothed.push(smoothed[0], smoothed[1]);
+  } else {
+    smoothed.push(points[points.length - 2], points[points.length - 1]);
+  }
+
+  return smoothed;
+}
+
+/**
+ * A simple high-resolution linear interpolation / point-doubling method.
+ * Preserves boundary points to ensure tile alignment
+ */
+function smoothBezier(
+  points: number[],
+  segmentsPerPoint: number = 4,
+  extent: number = 4096,
+): number[] {
+  if (points.length <= 4) return points;
+
+  const smoothed: number[] = [];
+  const closed = isClosed(points);
+
+  const limit = closed ? points.length - 2 : points.length - 2;
+
+  for (let i = 0; i < limit; i += 2) {
+    const x1 = points[i];
+    const y1 = points[i + 1];
+
+    const i2 = (i + 2) % (closed ? points.length - 2 : points.length);
+    const x2 = points[i2];
+    const y2 = points[i2 + 1];
+
+    // Check if endpoints are on boundary
+    const p1OnBoundary = isOnBoundary(x1, y1, extent);
+    const p2OnBoundary = isOnBoundary(x2, y2, extent);
+
+    // Add points along the segment
+    for (let t = 0; t < segmentsPerPoint; t++) {
+      const t_norm = t / segmentsPerPoint;
+
+      if (t === 0 && p1OnBoundary) {
+        // Preserve exact boundary point
+        smoothed.push(x1, y1);
+      } else {
+        const x = x1 * (1 - t_norm) + x2 * t_norm;
+        const y = y1 * (1 - t_norm) + y2 * t_norm;
+        smoothed.push(x, y);
+      }
+    }
+  }
+
+  // Add the final point
+  if (closed) {
+    smoothed.push(smoothed[0], smoothed[1]);
+  } else {
+    smoothed.push(points[points.length - 2], points[points.length - 1]);
+  }
+
+  return smoothed;
+}
+
 /**
  * Generates contour lines from a HeightTile
  *
@@ -171,6 +518,8 @@ function ratio(a: number, b: number, c: number) {
  * @param tile The input height tile, where values represent the height at the top-left of each pixel
  * @param extent Vector tile extent (default 4096)
  * @param buffer How many pixels into each neighboring tile to include in a tile
+ * @param smooth Apply smoothing to contour lines: 'none' = no smoothing, 'linear' = weighted average, 'chaikin' = corner cutting, 'catmull-rom' = spline interpolation, 'bezier' = linear interpolation upsampling (default none)
+ * @param smoothIterations Number of times to apply smoothing (default 1, higher = smoother but more processing)
  * @returns an object where keys are the elevation, and values are a list of `[x1, y1, x2, y2, ...]`
  * contour lines in tile coordinates
  */
@@ -179,6 +528,8 @@ export default function generateIsolines(
   tile: HeightTile,
   extent: number = 4096,
   buffer: number = 1,
+  smooth: "none" | "linear" | "chaikin" | "catmull-rom" | "bezier" = "none",
+  smoothIterations: number = 1,
 ): { [ele: number]: number[][] } {
   if (!interval) {
     return {};
@@ -275,7 +626,18 @@ export default function generateIsolines(
                   if (!list) {
                     segments[threshold] = list = [];
                   }
-                  list.push(f.lineString());
+                  // Apply smoothing if enabled, then round for vector tiles
+                  let line = f.lineString();
+                  if (smooth !== "none") {
+                    line = applySmoothing(
+                      line,
+                      smooth,
+                      smoothIterations,
+                      extent,
+                    );
+                  }
+                  line = line.map((coord) => Math.round(coord));
+                  list.push(line);
                 }
               } else {
                 // connecting 2 segments
@@ -312,10 +674,38 @@ export default function generateIsolines(
         if (list == null) {
           list = segments[level] || (segments[level] = []);
         }
-        list.push(value.lineString());
+        let line = value.lineString();
+        if (smooth !== "none") {
+          line = applySmoothing(line, smooth, smoothIterations, extent);
+        }
+        line = line.map((coord) => Math.round(coord));
+        list.push(line);
       }
     }
   }
 
   return segments;
+}
+
+// Helper function to apply the selected smoothing algorithm
+function applySmoothing(
+  points: number[],
+  method: "linear" | "chaikin" | "catmull-rom" | "bezier",
+  iterations: number,
+  extent: number,
+): number[] {
+  switch (method) {
+    case "linear":
+      return smoothLinear(points, iterations, extent);
+    case "chaikin":
+      return smoothChaikin(points, iterations, extent);
+    case "catmull-rom":
+      // For catmull-rom, iterations controls segmentsPerPoint (interpolation density)
+      return smoothCatmullRom(points, 0.5, iterations, extent);
+    case "bezier":
+      // For bezier, iterations controls segmentsPerPoint (interpolation density)
+      return smoothBezier(points, iterations, extent);
+    default:
+      return points;
+  }
 }
