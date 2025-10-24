@@ -177,7 +177,11 @@ export class LocalDemManager implements DemManager {
     if (!levels || levels.length === 0) {
       return Promise.resolve({ arrayBuffer: new ArrayBuffer(0) });
     }
-    const key = [z, x, y, encodeIndividualOptions(options)].join("/");
+    const url = this.demUrlPattern
+      .replace("{z}", z.toString())
+      .replace("{x}", x.toString())
+      .replace("{y}", y.toString());
+    const key = [url, encodeIndividualOptions(options)].join("/");
     return this.contourCache.get(
       key,
       async (_, childAbortController) => {
@@ -253,5 +257,10 @@ export class LocalDemManager implements DemManager {
       },
       parentAbortController,
     );
+  }
+
+  /** Updates the DEM tile URL pattern */
+  updateUrl(url: string): void {
+    this.demUrlPattern = url;
   }
 }

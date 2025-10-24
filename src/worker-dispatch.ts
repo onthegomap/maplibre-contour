@@ -73,4 +73,13 @@ export default class WorkerDispatch {
         timer,
       ) || noManager(managerId),
     );
+
+  updateUrl = (
+    managerId: number,
+    url: string,
+    _: AbortController,
+  ): Promise<void> => {
+    this.managers[managerId]?.updateUrl(url);
+    return Promise.resolve();
+  };
 }
