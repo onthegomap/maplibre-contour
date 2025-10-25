@@ -113,6 +113,13 @@ export default class RemoteDemManager implements DemManager {
 
   /** Updates the DEM tile URL pattern */
   updateUrl(url: string): void {
-    this.actor.send("updateUrl", [], new AbortController(), undefined, this.managerId, url);
+    this.actor.send(
+      "updateUrl",
+      [],
+      new AbortController(),
+      undefined,
+      this.managerId,
+      url,
+    );
   }
 }
