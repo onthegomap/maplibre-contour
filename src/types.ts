@@ -138,6 +138,8 @@ export interface DemManager {
     abortController: AbortController,
     timer?: Timer,
   ): Promise<ContourTile>;
+  /** Updates the DEM tile URL pattern */
+  updateUrl(url: string): void;
 }
 
 export type GetTileFunction = (

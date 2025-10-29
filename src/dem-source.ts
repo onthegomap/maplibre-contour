@@ -251,4 +251,13 @@ export class DemSource {
    */
   contourProtocolUrl = (options: GlobalContourTileOptions) =>
     `${this.contourProtocolUrlBase}?${encodeOptions(options)}`;
+
+  /**
+   * Updates the DEM tile URL and reinitializes the manager with the new URL.
+   * This is useful for dynamically changing the DEM source at runtime.
+   */
+  updateUrl(url: string): void {
+    // Update the manager with the new URL
+    this.manager.updateUrl(url);
+  }
 }
