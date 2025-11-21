@@ -12,3 +12,4 @@ target
 test-project*/package-lock.json
 *.swp
 .vscode
+.npmrc

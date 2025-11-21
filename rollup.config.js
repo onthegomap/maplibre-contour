@@ -15,6 +15,7 @@ const create = (file, format, plugins = []) => ({
     name: "mlcontour",
     file,
     format,
+    sourcemap: true,
     intro: fs.readFileSync("build/bundle_prelude.js", "utf8"),
   },
   treeshake: false,
@@ -31,6 +32,7 @@ export default [
       indent: false,
       chunkFileNames: "shared.js",
       minifyInternalExports: true,
+      sourcemap: true,
     },
     onwarn: (message) => {
       console.error(message);
