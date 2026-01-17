@@ -7,10 +7,10 @@
       name="viewport"
       content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <script src="https://unpkg.com/maplibre-gl@4.6.0/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.js"></script>
     <script src="https://unpkg.com/maplibre-contour@0.1.0/dist/index.min.js"></script>
     <link
-      href="https://unpkg.com/maplibre-gl@4.6.0/dist/maplibre-gl.css"
+      href="https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.css"
       rel="stylesheet"
     />
     <style>
@@ -30,9 +30,9 @@
     <div id="map"></div>
     <script>
       var demSource = new mlcontour.DemSource({
-        url: "https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png",
+        url: "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp",
         encoding: "terrarium",
-        maxzoom: 13,
+        maxzoom: 12,
       });
 
       // calls maplibregl.addProtocol for the shared cache and contour protocols
@@ -45,13 +45,12 @@
         hash: true,
         style: {
           version: 8,
-          glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
           sources: {
             dem: {
               type: "raster-dem",
               encoding: "terrarium",
               tiles: [demSource.sharedDemProtocolUrl], // share cached DEM tiles with contour layer
-              maxzoom: 13,
+              maxzoom: 12,
               tileSize: 256,
             },
             contours: {
@@ -71,6 +70,7 @@
                   elevationKey: "ele",
                   levelKey: "level",
                   contourLayer: "contours",
+                  overzoom: 1,
                 }),
               ],
               maxzoom: 16,
