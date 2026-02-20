@@ -268,6 +268,78 @@ test("e2e contour tile", async () => {
   });
 });
 
+test("e2e analysis tile", async () => {
+  global.fetch = jest.fn().mockImplementation(async () => {
+    jest.advanceTimersByTime(1);
+    return new Response(
+      new Blob([Uint8Array.from([1, 2])], { type: "image/png" }),
+      {
+        status: 200,
+      },
+    );
+  });
+
+  const rasterTile: ArrayBuffer = (
+    await source.analysisProtocol(
+      {
+        url: source
+          .analysisProtocolUrl({
+            mode: "slope",
+            units: "degrees",
+            alpha: 0.55,
+            ramp: "default",
+            exaggeration: 1,
+            smooth: false,
+          })
+          .replace("{z}", "10")
+          .replace("{x}", "20")
+          .replace("{y}", "30"),
+      },
+      new AbortController(),
+    )
+  ).data;
+
+  const pngHeader = Array.from(new Uint8Array(rasterTile).slice(0, 8));
+  expect(pngHeader).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  expect(rasterTile.byteLength).toBeGreaterThan(100);
+});
+
+test("e2e analysis tile (aspect)", async () => {
+  global.fetch = jest.fn().mockImplementation(async () => {
+    jest.advanceTimersByTime(1);
+    return new Response(
+      new Blob([Uint8Array.from([1, 2])], { type: "image/png" }),
+      {
+        status: 200,
+      },
+    );
+  });
+
+  const rasterTile: ArrayBuffer = (
+    await source.analysisProtocol(
+      {
+        url: source
+          .analysisProtocolUrl({
+            mode: "aspect",
+            units: "degrees",
+            alpha: 0.55,
+            ramp: "aspect",
+            exaggeration: 1,
+            smooth: false,
+          })
+          .replace("{z}", "10")
+          .replace("{x}", "20")
+          .replace("{y}", "30"),
+      },
+      new AbortController(),
+    )
+  ).data;
+
+  const pngHeader = Array.from(new Uint8Array(rasterTile).slice(0, 8));
+  expect(pngHeader).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  expect(rasterTile.byteLength).toBeGreaterThan(100);
+});
+
 test("decode image from worker", async () => {
   const result = await workerActor.send(
     "decodeImage",

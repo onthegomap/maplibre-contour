@@ -1,13 +1,19 @@
 import { LocalDemManager } from "./local-dem-manager";
 import { Timer } from "./performance";
 import type {
+  AnalysisTile,
   ContourTile,
   FetchResponse,
+  IndividualAnalysisTileOptions,
   IndividualContourTileOptions,
   InitMessage,
   TransferrableDemTile,
 } from "./types";
-import { prepareContourTile, prepareDemTile } from "./utils";
+import {
+  prepareAnalysisTile,
+  prepareContourTile,
+  prepareDemTile,
+} from "./utils";
 
 const noManager = (managerId: number): Promise<any> =>
   Promise.reject(new Error(`No manager registered for ${managerId}`));
@@ -65,6 +71,26 @@ export default class WorkerDispatch {
   ): Promise<ContourTile> =>
     prepareContourTile(
       this.managers[managerId]?.fetchContourTile(
+        z,
+        x,
+        y,
+        options,
+        abortController,
+        timer,
+      ) || noManager(managerId),
+    );
+
+  fetchAnalysisTile = (
+    managerId: number,
+    z: number,
+    x: number,
+    y: number,
+    options: IndividualAnalysisTileOptions,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<AnalysisTile> =>
+    prepareAnalysisTile(
+      this.managers[managerId]?.fetchAnalysisTile(
         z,
         x,
         y,

@@ -47,6 +47,19 @@ const map = new maplibregl.Map({
         ],
         maxzoom: 16,
       },
+      analysis: {
+        type: "raster",
+        tiles: [
+          demSource.analysisProtocolUrl({
+            mode: "slope",
+            units: "degrees",
+            ramp: "default",
+            alpha: 0.55,
+          }),
+        ],
+        tileSize: 512,
+        maxzoom: 14,
+      },
     },
     layers: [
       {
@@ -68,6 +81,14 @@ const map = new maplibregl.Map({
         },
         layout: {
           "line-join": "round",
+        },
+      },
+      {
+        id: "analysis-overlay",
+        type: "raster",
+        source: "analysis",
+        paint: {
+          "raster-opacity": 1,
         },
       },
       {

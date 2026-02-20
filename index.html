@@ -7,10 +7,10 @@
       name="viewport"
       content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <script src="https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.js"></script>
-    <script src="https://unpkg.com/maplibre-contour@0.1.0/dist/index.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@5.18.0/dist/maplibre-gl.js"></script>
+    <script src="dist/index.min.js"></script>
     <link
-      href="https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.css"
+      href="https://unpkg.com/maplibre-gl@5.18.0/dist/maplibre-gl.css"
       rel="stylesheet"
     />
     <style>
@@ -75,6 +75,21 @@
               ],
               maxzoom: 16,
             },
+            analysis: {
+              type: "raster",
+              tiles: [
+                demSource.analysisProtocolUrl({
+                  mode: "slope",
+                  units: "degrees",
+                  ramp: "default",
+                  alpha: 0.6,
+                  exaggeration: 1,
+                  smooth: false,
+                }),
+              ],
+              tileSize: 512,
+              maxzoom: 14,
+            },
           },
           layers: [
             {
@@ -83,6 +98,16 @@
               source: "dem",
               paint: {
                 "hillshade-exaggeration": 0.25,
+              },
+            },
+            {
+              id: "slope-overlay",
+              type: "raster",
+              source: "analysis",
+              paint: {
+                "raster-opacity": 0.6,
+                "raster-fade-duration": 0,
+                "raster-resampling": "nearest", // avoid edge artefacts
               },
             },
             {

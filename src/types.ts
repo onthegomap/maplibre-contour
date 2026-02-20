@@ -24,6 +24,15 @@ export interface TransferrableContourTile
   extends ContourTile,
     IsTransferrable {}
 
+/** A rendered analysis raster tile (PNG bytes) */
+export interface AnalysisTile {
+  /** Encoded PNG bytes for a raster tile */
+  arrayBuffer: ArrayBuffer;
+}
+export interface TransferrableAnalysisTile
+  extends AnalysisTile,
+    IsTransferrable {}
+
 export interface FetchResponse {
   data: Blob;
   expires?: string;
@@ -73,6 +82,34 @@ export interface GlobalContourTileOptions extends ContourTileOptions {
 
 export interface IndividualContourTileOptions extends ContourTileOptions {
   levels: number[];
+}
+
+export type AnalysisMode = "slope" | "aspect";
+export type AnalysisUnits = "degrees" | "percent";
+
+/**
+ * Parameters used to generate a colorized raster tile from DEM analysis values.
+ *
+ * `ramp` accepts either a named ramp (for example: "default" or "aspect") or a JSON-encoded
+ * expression subset compatible with MapLibre style syntax (`step` and `interpolate`).
+ */
+export interface AnalysisTileOptions {
+  mode?: AnalysisMode;
+  units?: AnalysisUnits;
+  ramp?: string;
+  alpha?: number;
+  smooth?: boolean;
+  exaggeration?: number;
+}
+
+export type GlobalAnalysisTileOptions = AnalysisTileOptions;
+
+export interface IndividualAnalysisTileOptions extends AnalysisTileOptions {
+  mode: AnalysisMode;
+  units: AnalysisUnits;
+  alpha: number;
+  smooth: boolean;
+  exaggeration: number;
 }
 
 export interface Image {
@@ -138,6 +175,14 @@ export interface DemManager {
     abortController: AbortController,
     timer?: Timer,
   ): Promise<ContourTile>;
+  fetchAnalysisTile(
+    z: number,
+    x: number,
+    y: number,
+    options: IndividualAnalysisTileOptions,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<AnalysisTile>;
 }
 
 export type GetTileFunction = (

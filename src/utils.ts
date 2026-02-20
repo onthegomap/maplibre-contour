@@ -1,11 +1,19 @@
 import type {
+  AnalysisTile,
   ContourTile,
   DemTile,
   GlobalContourTileOptions,
   IndividualContourTileOptions,
+  TransferrableAnalysisTile,
   TransferrableContourTile,
   TransferrableDemTile,
 } from "./types";
+export {
+  decodeAnalysisOptions,
+  encodeAnalysisOptions,
+  encodeIndividualAnalysisOptions,
+  normalizeAnalysisOptions,
+} from "./analysis/analysis-options";
 
 function sortedEntries(object: any): [string, any][] {
   const entries = Object.entries(object);
@@ -118,6 +126,18 @@ export function prepareDemTile(
       newData.set(data);
     }
     return { ...rest, data: newData, transferrables: [newData.buffer] };
+  });
+}
+
+export function prepareAnalysisTile(
+  promise: Promise<AnalysisTile>,
+): Promise<TransferrableAnalysisTile> {
+  return promise.then(({ arrayBuffer }) => {
+    const clone = copy(arrayBuffer);
+    return {
+      arrayBuffer: clone,
+      transferrables: [clone],
+    };
   });
 }
 

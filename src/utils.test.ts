@@ -3,7 +3,10 @@ import type {
   IndividualContourTileOptions,
 } from "./types";
 import {
+  decodeAnalysisOptions,
   decodeOptions,
+  encodeAnalysisOptions,
+  encodeIndividualAnalysisOptions,
   encodeIndividualOptions,
   encodeOptions,
   getOptionsForZoom,
@@ -36,6 +39,42 @@ const fullGlobalOptionsOut: GlobalContourTileOptions = {
 
 beforeEach(() => {
   jest.useFakeTimers();
+});
+
+test("round-trip analysis options", () => {
+  const options = {
+    mode: "slope" as const,
+    units: "degrees" as const,
+    alpha: 0.5432,
+    smooth: true,
+    exaggeration: 1.2345,
+    ramp: '["step",["slope"],"#fff",30,"#000"]',
+  };
+
+  expect(decodeAnalysisOptions(encodeAnalysisOptions(options))).toEqual({
+    ...options,
+    alpha: 0.543,
+    exaggeration: 1.235,
+  });
+});
+
+test("analysis individual options cache-key stability", () => {
+  const options = {
+    mode: "aspect" as const,
+    units: "degrees" as const,
+    alpha: 0.5,
+    smooth: false,
+    exaggeration: 1,
+    ramp: "default",
+  };
+  const encoded = encodeIndividualAnalysisOptions(options);
+  expect(encodeIndividualAnalysisOptions(options)).toBe(encoded);
+  expect(
+    encodeIndividualAnalysisOptions({
+      ...options,
+      alpha: 0.6,
+    }),
+  ).not.toBe(encoded);
 });
 
 afterEach(() => {
