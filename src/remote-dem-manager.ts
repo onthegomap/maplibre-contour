@@ -4,6 +4,8 @@ import type WorkerDispatch from "./worker-dispatch";
 import decodeImage from "./decode-image";
 import { Timer } from "./performance";
 import type {
+  AnalysisTile,
+  IndividualAnalysisTileOptions,
   ContourTile,
   DemManager,
   DemManagerInitizlizationParameters,
@@ -101,6 +103,26 @@ export default class RemoteDemManager implements DemManager {
   ): Promise<ContourTile> =>
     this.actor.send(
       "fetchContourTile",
+      [],
+      abortController,
+      timer,
+      this.managerId,
+      z,
+      x,
+      y,
+      options,
+    );
+
+  fetchAnalysisTile = (
+    z: number,
+    x: number,
+    y: number,
+    options: IndividualAnalysisTileOptions,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<AnalysisTile> =>
+    this.actor.send(
+      "fetchAnalysisTile",
       [],
       abortController,
       timer,

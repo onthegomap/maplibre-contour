@@ -2,8 +2,17 @@ import AsyncCache from "./cache";
 import defaultDecodeImage from "./decode-image";
 import { HeightTile } from "./height-tile";
 import generateIsolines from "./isolines";
-import { encodeIndividualOptions, isAborted, withTimeout } from "./utils";
+import { colorizeAnalysisTile } from "./analysis/analysis-color";
+import { encodePngRgba } from "./analysis/analysis-encode";
+import { computeAnalysisTile } from "./analysis/analysis-kernel";
+import {
+  encodeIndividualAnalysisOptions,
+  encodeIndividualOptions,
+  isAborted,
+  withTimeout,
+} from "./utils";
 import type {
+  IndividualAnalysisTileOptions,
   ContourTile,
   DecodeImageFunction,
   DemManager,
@@ -13,6 +22,7 @@ import type {
   FetchResponse,
   GetTileFunction,
   IndividualContourTileOptions,
+  AnalysisTile,
 } from "./types";
 import encodeVectorTile, { GeomType } from "./vtpbf";
 import { Timer } from "./performance";
@@ -42,6 +52,7 @@ export class LocalDemManager implements DemManager {
   tileCache: AsyncCache<string, FetchResponse>;
   parsedCache: AsyncCache<string, DemTile>;
   contourCache: AsyncCache<string, ContourTile>;
+  analysisCache: AsyncCache<string, AnalysisTile>;
   demUrlPattern: string;
   encoding: Encoding;
   maxzoom: number;
@@ -54,6 +65,7 @@ export class LocalDemManager implements DemManager {
     this.tileCache = new AsyncCache(options.cacheSize);
     this.parsedCache = new AsyncCache(options.cacheSize);
     this.contourCache = new AsyncCache(options.cacheSize);
+    this.analysisCache = new AsyncCache(options.cacheSize);
     this.timeoutMs = options.timeoutMs;
     this.demUrlPattern = options.demUrlPattern;
     this.encoding = options.encoding;
@@ -202,7 +214,7 @@ export class LocalDemManager implements DemManager {
         const neighbors = await Promise.all(neighborPromises);
         let virtualTile = HeightTile.combineNeighbors(neighbors);
         if (!virtualTile || isAborted(childAbortController)) {
-          return { arrayBuffer: new Uint8Array().buffer };
+          throw new Error("canceled");
         }
         const mark = timer?.marker("isoline");
 
@@ -250,6 +262,66 @@ export class LocalDemManager implements DemManager {
         mark?.();
 
         return { arrayBuffer: result.slice().buffer };
+      },
+      parentAbortController,
+    );
+  }
+
+  fetchAnalysisTile(
+    z: number,
+    x: number,
+    y: number,
+    options: IndividualAnalysisTileOptions,
+    parentAbortController: AbortController,
+    timer?: Timer,
+  ): Promise<AnalysisTile> {
+    const key = [
+      z,
+      x,
+      y,
+      "analysis",
+      encodeIndividualAnalysisOptions(options),
+    ].join("/");
+
+    return this.analysisCache.get(
+      key,
+      async (_, childAbortController) => {
+        const max = 1 << z;
+        const neighborPromises: (Promise<HeightTile> | undefined)[] = [];
+        for (let iy = y - 1; iy <= y + 1; iy++) {
+          for (let ix = x - 1; ix <= x + 1; ix++) {
+            neighborPromises.push(
+              iy < 0 || iy >= max
+                ? undefined
+                : this.fetchDem(
+                    z,
+                    (ix + max) % max,
+                    iy,
+                    { overzoom: 0, levels: [] },
+                    childAbortController,
+                    timer,
+                  ),
+            );
+          }
+        }
+
+        const neighbors = await Promise.all(neighborPromises);
+        const virtualTile =
+          HeightTile.combineNeighbors(neighbors)?.materialize(1);
+        if (!virtualTile || isAborted(childAbortController)) {
+          throw new Error("canceled");
+        }
+
+        const mark = timer?.marker("isoline");
+        const scalarTile = computeAnalysisTile(virtualTile, z, x, y, options);
+        const rgba = colorizeAnalysisTile(scalarTile, options);
+        const arrayBuffer = encodePngRgba(
+          scalarTile.width,
+          scalarTile.height,
+          rgba,
+        );
+        mark?.();
+        return { arrayBuffer };
       },
       parentAbortController,
     );
