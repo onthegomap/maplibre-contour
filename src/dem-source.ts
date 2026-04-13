@@ -1,5 +1,10 @@
 import { LocalDemManager } from "./local-dem-manager";
-import { decodeOptions, encodeOptions, getOptionsForZoom } from "./utils";
+import {
+  decodeOptions,
+  encodeOptions,
+  getOptionsForZoom,
+  parseUrl,
+} from "./utils";
 import RemoteDemManager from "./remote-dem-manager";
 import type {
   DemManager,
@@ -174,11 +179,6 @@ export class DemSource {
     maplibre.addProtocol(this.contourProtocolId, this.contourProtocol);
   };
 
-  parseUrl(url: string): [number, number, number] {
-    const [, z, x, y] = /\/\/(\d+)\/(\d+)\/(\d+)/.exec(url) || [];
-    return [Number(z), Number(x), Number(y)];
-  }
-
   /**
    * Callback to be used with maplibre addProtocol to re-use cached DEM tiles across sources.
    */
@@ -186,7 +186,7 @@ export class DemSource {
     request: RequestParameters,
     abortController: AbortController,
   ) => {
-    const [z, x, y] = this.parseUrl(request.url);
+    const [z, x, y] = parseUrl(request.url);
     const timer = new Timer("main");
     let timing: Timing;
     try {
@@ -223,7 +223,7 @@ export class DemSource {
     const timer = new Timer("main");
     let timing: Timing;
     try {
-      const [z, x, y] = this.parseUrl(request.url);
+      const [z, x, y] = parseUrl(request.url);
       const options = decodeOptions(request.url);
       const data = await this.manager.fetchContourTile(
         z,

@@ -43,4 +43,12 @@ export default [
   create("dist/index.mjs", "esm"),
   create("dist/index.js", "umd"),
   create("dist/index.min.js", "umd", [terser()]),
+  {
+    input: "src/add-protocol-worker.ts",
+    output: {
+      file: "dist/add-protocol-worker.js",
+      format: "esm",
+    },
+    plugins: [nodeResolve, typescript(), commonjs()],
+  }
 ];
