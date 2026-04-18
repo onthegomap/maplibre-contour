@@ -105,6 +105,33 @@ map.addSource("dem", {
 });
 ```
 
+### Import it to a maplibre worker
+
+This is an alternative method, which reduces bundle size and also supports other protocols, but it's a bit more complicated to setup.
+It's similar to how the RTL plugin works.
+
+Import the script from a CDN:
+
+```ts
+maplibregl.importScriptInWorkers("https://unpkg.com/maplibre-contour@0.1.0/dist/add-protocol-worker.js");
+
+const dispatcher = maplibregl.getGlobalDispatcher();
+dispatcher.registerMessageHandler("contour-worker" as any, async () => { // when the script finishes loading in the workers it will send out this message.
+
+  await dispatcher.broadcast("contour-worker" as any, { // this is to configure the worker with the relevant parameters
+      demUrlPattern: "https://url/of/dem/source/{z}/{x}/{y}.png", // this can also support other protocols such as pmtiles://
+      encoding: "terrarium",
+      maxzoom: 13
+  });
+
+  // once this is configured, you can add a source with the following address for example, and layers as described above.
+  map.addSource("contour-source", {
+    type: "vector",
+    tiles: ["dem-contour://{z}/{x}/{y}?contourLayer=contours&elevationKey=ele&levelKey=level&multiplier=3.28084&overzoom=1&thresholds=11*200*1000~12*10*100~13*10*100~14*10*100~15*10*100"],
+  });
+});
+```
+
 # How it works
 
 <img src="architecture.png" width="500">

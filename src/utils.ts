@@ -212,3 +212,8 @@ export function onAbort(
 export function isAborted(abortController?: AbortController): boolean {
   return Boolean(abortController?.signal?.aborted);
 }
+
+export function parseUrl(url: string): [number, number, number] {
+  const [, z, x, y] = /\/\/(\d+)\/(\d+)\/(\d+)/.exec(url) || [];
+  return [Number(z), Number(x), Number(y)];
+}
