@@ -97,6 +97,7 @@ export class DemSource {
   manager: DemManager;
   sharedDemProtocolUrl: string;
   timingCallbacks: Array<(timing: Timing) => void> = [];
+  private sourceVersion = 0;
 
   constructor({
     url,
@@ -250,13 +251,14 @@ export class DemSource {
    * Returns a URL with the correct maplibre protocol prefix and all `option` encoded in request parameters.
    */
   contourProtocolUrl = (options: GlobalContourTileOptions) =>
-    `${this.contourProtocolUrlBase}?${encodeOptions(options)}`;
+    `${this.contourProtocolUrlBase}/${this.sourceVersion}?${encodeOptions(options)}`;
 
   /**
    * Updates the DEM tile URL and reinitializes the manager with the new URL.
    * This is useful for dynamically changing the DEM source at runtime.
    */
   updateUrl(url: string): void {
+    this.sourceVersion += 1;
     // Update the manager with the new URL
     this.manager.updateUrl(url);
   }
