@@ -3,6 +3,7 @@ import { decodeOptions, encodeOptions, getOptionsForZoom } from "./utils";
 import RemoteDemManager from "./remote-dem-manager";
 import type {
   DemManager,
+  DemSourceSnapshot,
   DemTile,
   GlobalContourTileOptions,
   Timing,
@@ -87,6 +88,11 @@ const v3compat =
 
 const used = new Set<string>();
 
+const sourceSnapshot = (url: string, key = url): DemSourceSnapshot => ({
+  key,
+  urlPattern: url,
+});
+
 /**
  * A remote source of DEM tiles that can be connected to maplibre.
  */
@@ -135,7 +141,7 @@ export class DemSource {
     this.contourProtocolUrlBase = `${this.contourProtocolId}://{z}/{x}/{y}`;
     const ManagerClass = worker ? RemoteDemManager : LocalDemManager;
     this.manager = new ManagerClass({
-      demUrlPattern: url,
+      source: sourceSnapshot(url),
       cacheSize,
       encoding,
       maxzoom,
@@ -250,16 +256,30 @@ export class DemSource {
   /**
    * Returns a URL with the correct maplibre protocol prefix and all `option` encoded in request parameters.
    */
-  contourProtocolUrl = (options: GlobalContourTileOptions) =>
-    `${this.contourProtocolUrlBase}/${this.sourceVersion}?${encodeOptions(options)}`;
+  contourProtocolUrl = (options: GlobalContourTileOptions) => {
+    const version = this.sourceVersion > 0 ? `/${this.sourceVersion}` : "";
+    return `${this.contourProtocolUrlBase}${version}?${encodeOptions(options)}`;
+  };
+
+  /**
+   * Switches the DEM tile URL used for future contour requests.
+   *
+   * Returns false when the active source key is unchanged so callers can skip
+   * refreshing MapLibre vector source tiles.
+   */
+  setSource(url: string, options: { key?: string } = {}): boolean {
+    const changed = this.manager.setSource(sourceSnapshot(url, options.key));
+    if (changed) {
+      this.sourceVersion += 1;
+    }
+    return changed;
+  }
 
   /**
    * Updates the DEM tile URL and reinitializes the manager with the new URL.
    * This is useful for dynamically changing the DEM source at runtime.
    */
   updateUrl(url: string): void {
-    this.sourceVersion += 1;
-    // Update the manager with the new URL
-    this.manager.updateUrl(url);
+    this.setSource(url);
   }
 }

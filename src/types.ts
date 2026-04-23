@@ -30,6 +30,11 @@ export interface FetchResponse {
   cacheControl?: string;
 }
 
+export interface DemSourceSnapshot {
+  key: string;
+  urlPattern: string;
+}
+
 /** Parameters to use when creating a contour vector tile from raw elevation data */
 export interface ContourTileOptions {
   /** Factor to scale the elevation meters by to support different units (default 1 for meters) */
@@ -138,6 +143,8 @@ export interface DemManager {
     abortController: AbortController,
     timer?: Timer,
   ): Promise<ContourTile>;
+  /** Switches to a DEM tile source and returns false when the active source is unchanged */
+  setSource(source: DemSourceSnapshot): boolean;
   /** Updates the DEM tile URL pattern */
   updateUrl(url: string): void;
 }
@@ -154,7 +161,7 @@ export type DecodeImageFunction = (
 ) => Promise<DemTile>;
 
 export type DemManagerRequiredInitializationParameters = {
-  demUrlPattern: string;
+  source: DemSourceSnapshot;
   cacheSize: number;
   encoding: Encoding;
   maxzoom: number;

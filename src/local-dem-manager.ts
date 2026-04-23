@@ -8,6 +8,7 @@ import type {
   DecodeImageFunction,
   DemManager,
   DemManagerInitizlizationParameters,
+  DemSourceSnapshot,
   DemTile,
   Encoding,
   FetchResponse,
@@ -42,7 +43,8 @@ export class LocalDemManager implements DemManager {
   tileCache: AsyncCache<string, FetchResponse>;
   parsedCache: AsyncCache<string, DemTile>;
   contourCache: AsyncCache<string, ContourTile>;
-  demUrlPattern: string;
+  activeSource: DemSourceSnapshot;
+  sources: Map<string, DemSourceSnapshot>;
   encoding: Encoding;
   maxzoom: number;
   timeoutMs: number;
@@ -55,7 +57,8 @@ export class LocalDemManager implements DemManager {
     this.parsedCache = new AsyncCache(options.cacheSize);
     this.contourCache = new AsyncCache(options.cacheSize);
     this.timeoutMs = options.timeoutMs;
-    this.demUrlPattern = options.demUrlPattern;
+    this.activeSource = options.source;
+    this.sources = new Map([[options.source.key, options.source]]);
     this.encoding = options.encoding;
     this.maxzoom = options.maxzoom;
     this.decodeImage = options.decodeImage || defaultDecodeImage;
@@ -69,10 +72,32 @@ export class LocalDemManager implements DemManager {
     parentAbortController: AbortController,
     timer?: Timer,
   ): Promise<FetchResponse> {
-    const url = this.demUrlPattern
+    return this.fetchTileForSource(
+      this.activeSource,
+      z,
+      x,
+      y,
+      parentAbortController,
+      timer,
+    );
+  }
+
+  private tileUrl(source: DemSourceSnapshot, z: number, x: number, y: number) {
+    return source.urlPattern
       .replace("{z}", z.toString())
       .replace("{x}", x.toString())
       .replace("{y}", y.toString());
+  }
+
+  private fetchTileForSource(
+    source: DemSourceSnapshot,
+    z: number,
+    x: number,
+    y: number,
+    parentAbortController: AbortController,
+    timer?: Timer,
+  ): Promise<FetchResponse> {
+    const url = this.tileUrl(source, z, x, y);
     timer?.useTile(url);
     return this.tileCache.get(
       url,
@@ -88,26 +113,40 @@ export class LocalDemManager implements DemManager {
       parentAbortController,
     );
   }
-  fetchAndParseTile = (
+  fetchAndParseTile(
     z: number,
     x: number,
     y: number,
     abortController: AbortController,
     timer?: Timer,
-  ): Promise<DemTile> => {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const self = this;
-    const url = this.demUrlPattern
-      .replace("{z}", z.toString())
-      .replace("{x}", x.toString())
-      .replace("{y}", y.toString());
+  ): Promise<DemTile> {
+    return this.fetchAndParseTileForSource(
+      this.activeSource,
+      z,
+      x,
+      y,
+      abortController,
+      timer,
+    );
+  }
+
+  private fetchAndParseTileForSource(
+    source: DemSourceSnapshot,
+    z: number,
+    x: number,
+    y: number,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<DemTile> {
+    const url = this.tileUrl(source, z, x, y);
 
     timer?.useTile(url);
 
     return this.parsedCache.get(
       url,
       async (_, childAbortController) => {
-        const response = await self.fetchTile(
+        const response = await this.fetchTileForSource(
+          source,
           z,
           x,
           y,
@@ -115,9 +154,9 @@ export class LocalDemManager implements DemManager {
           timer,
         );
         if (isAborted(childAbortController)) throw new Error("canceled");
-        const promise = self.decodeImage(
+        const promise = this.decodeImage(
           response.data,
-          self.encoding,
+          this.encoding,
           childAbortController,
         );
         const mark = timer?.marker("decode");
@@ -127,9 +166,10 @@ export class LocalDemManager implements DemManager {
       },
       abortController,
     );
-  };
+  }
 
-  async fetchDem(
+  private async fetchDemForSource(
+    source: DemSourceSnapshot,
     z: number,
     x: number,
     y: number,
@@ -143,7 +183,8 @@ export class LocalDemManager implements DemManager {
     const newX = Math.floor(x / div);
     const newY = Math.floor(y / div);
 
-    const tile = await this.fetchAndParseTile(
+    const tile = await this.fetchAndParseTileForSource(
+      source,
       zoom,
       newX,
       newY,
@@ -177,11 +218,10 @@ export class LocalDemManager implements DemManager {
     if (!levels || levels.length === 0) {
       return Promise.resolve({ arrayBuffer: new ArrayBuffer(0) });
     }
-    const url = this.demUrlPattern
-      .replace("{z}", z.toString())
-      .replace("{x}", x.toString())
-      .replace("{y}", y.toString());
-    const key = [url, encodeIndividualOptions(options)].join("/");
+    const source = this.activeSource;
+    const key = [source.key, z, x, y, encodeIndividualOptions(options)].join(
+      "/",
+    );
     return this.contourCache.get(
       key,
       async (_, childAbortController) => {
@@ -192,7 +232,8 @@ export class LocalDemManager implements DemManager {
             neighborPromises.push(
               iy < 0 || iy >= max
                 ? undefined
-                : this.fetchDem(
+                : this.fetchDemForSource(
+                    source,
                     z,
                     (ix + max) % max,
                     iy,
@@ -259,8 +300,17 @@ export class LocalDemManager implements DemManager {
     );
   }
 
+  setSource(source: DemSourceSnapshot): boolean {
+    if (this.activeSource.key === source.key) {
+      return false;
+    }
+    this.sources.set(source.key, source);
+    this.activeSource = source;
+    return true;
+  }
+
   /** Updates the DEM tile URL pattern */
   updateUrl(url: string): void {
-    this.demUrlPattern = url;
+    this.setSource({ key: url, urlPattern: url });
   }
 }

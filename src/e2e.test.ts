@@ -287,7 +287,10 @@ test("decode image from worker", async () => {
 test("fake decode image and fetch tile", async () => {
   const getTileSpy = jest.fn().mockReturnValue(Promise.resolve({}));
   const demManager = new LocalDemManager({
-    demUrlPattern: "https://example/{z}/{x}/{y}.png",
+    source: {
+      key: "example",
+      urlPattern: "https://example/{z}/{x}/{y}.png",
+    },
     cacheSize: 100,
     encoding: "terrarium",
     maxzoom: 11,
@@ -307,4 +310,86 @@ test("fake decode image and fetch tile", async () => {
   );
   expect(demTile.data).toEqual(expectedElevations);
   expect(getTileSpy.mock.calls[0][0]).toBe("https://example/1/2/3.png");
+});
+
+test("contour requests use the source snapshot captured at start", async () => {
+  const getTileSpy = jest.fn().mockReturnValue(Promise.resolve({}));
+  const demManager = new LocalDemManager({
+    source: {
+      key: "old",
+      urlPattern: "https://old/{z}/{x}/{y}.png",
+    },
+    cacheSize: 100,
+    encoding: "terrarium",
+    maxzoom: 1,
+    timeoutMs: 10000,
+    decodeImage: async () => ({
+      width: 4,
+      height: 4,
+      data: expectedElevations,
+    }),
+    getTile: getTileSpy,
+  });
+
+  const contourPromise = demManager.fetchContourTile(
+    1,
+    0,
+    0,
+    { levels: [1] },
+    new AbortController(),
+  );
+  expect(
+    demManager.setSource({
+      key: "new",
+      urlPattern: "https://new/{z}/{x}/{y}.png",
+    }),
+  ).toBe(true);
+  await contourPromise;
+
+  expect(getTileSpy).toHaveBeenCalled();
+  expect(
+    getTileSpy.mock.calls.every(([url]) => url.startsWith("https://old/")),
+  ).toBe(true);
+});
+
+test("contour cache is isolated by source key", async () => {
+  const demManager = new LocalDemManager({
+    source: {
+      key: "a",
+      urlPattern: "https://same/{z}/{x}/{y}.png",
+    },
+    cacheSize: 100,
+    encoding: "terrarium",
+    maxzoom: 1,
+    timeoutMs: 10000,
+    decodeImage: async () => ({
+      width: 4,
+      height: 4,
+      data: expectedElevations,
+    }),
+    getTile: jest.fn().mockReturnValue(Promise.resolve({})),
+  });
+
+  await demManager.fetchContourTile(
+    1,
+    0,
+    0,
+    { levels: [1] },
+    new AbortController(),
+  );
+  expect(
+    demManager.setSource({
+      key: "b",
+      urlPattern: "https://same/{z}/{x}/{y}.png",
+    }),
+  ).toBe(true);
+  await demManager.fetchContourTile(
+    1,
+    0,
+    0,
+    { levels: [1] },
+    new AbortController(),
+  );
+
+  expect(demManager.contourCache.size()).toBe(2);
 });
