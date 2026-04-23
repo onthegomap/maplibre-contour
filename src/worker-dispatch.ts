@@ -2,6 +2,7 @@ import { LocalDemManager } from "./local-dem-manager";
 import { Timer } from "./performance";
 import type {
   ContourTile,
+  DemSourceSnapshot,
   FetchResponse,
   IndividualContourTileOptions,
   InitMessage,
@@ -73,4 +74,20 @@ export default class WorkerDispatch {
         timer,
       ) || noManager(managerId),
     );
+
+  setSource = (
+    managerId: number,
+    source: DemSourceSnapshot,
+    _: AbortController,
+  ): Promise<boolean> =>
+    Promise.resolve(this.managers[managerId]?.setSource(source) || false);
+
+  updateUrl = (
+    managerId: number,
+    url: string,
+    _: AbortController,
+  ): Promise<void> => {
+    this.managers[managerId]?.updateUrl(url);
+    return Promise.resolve();
+  };
 }

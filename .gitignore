@@ -10,3 +10,6 @@ lerna-debug.log*
 TODO
 target
 test-project*/package-lock.json
+*.swp
+.vscode
+.npmrc

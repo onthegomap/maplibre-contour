@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Display a map</title>
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <script src="https://unpkg.com/maplibre-gl@4.6.0/dist/maplibre-gl.js"></script>
+    <script src="../dist/index.js"></script>
+    <link
+      href="https://unpkg.com/maplibre-gl@4.6.0/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      var demSource = new mlcontour.DemSource({
+        url: "http://localhost:1338/test-project/20251028_030000/{z}/{x}/{y}.png",
+        encoding: "terrarium",
+        worker: false,
+        maxzoom: 2,
+      });
+
+      // calls maplibregl.addProtocol for the shared cache and contour protocols
+      demSource.setupMaplibre(maplibregl);
+
+      var demSourceS3 = new mlcontour.DemSource({
+        url: "https://elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png",
+        encoding: "terrarium",
+        maxzoom: 13,
+      });
+
+      // calls maplibregl.addProtocol for the shared cache and contour protocols
+      demSourceS3.setupMaplibre(maplibregl);
+
+      var map = new maplibregl.Map({
+        container: "map",
+        zoom: 1,
+        center: [86.92731, 27.97797],
+        hash: true,
+        style: {
+          version: 8,
+          glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+          sources: {
+            dem: {
+              type: "raster-dem",
+              encoding: "terrarium",
+              tiles: [demSourceS3.sharedDemProtocolUrl], // share cached DEM tiles with contour layer
+              maxzoom: 13,
+              tileSize: 256,
+            },
+            contour_src: {
+              type: "vector",
+              tiles: [
+                demSource.contourProtocolUrl({
+                  multiplier: 1,
+                  thresholds: {
+                    0: [4, 4],
+                    1: [4, 4],
+                    2: [4, 4],
+                    3: [2, 4],
+                    4: [2, 4],
+                    5: [2, 4],
+                  },
+                  elevationKey: "ele",
+                  levelKey: "level",
+                  contourLayer: "contours",
+                }),
+              ],
+              maxzoom: 16,
+            },
+            countries: {
+              type: "vector",
+              tiles: ["https://vectortiles.tileserver.com/country/{z}/{x}/{y}.pbf"],
+              minzoom: 0,
+              maxzoom: 6,
+            }
+          },
+          layers: [
+            {
+              id: "dark-overlay",
+              type: "background",
+              paint: {
+                "background-color": "rgba(0, 0, 0, 0.4)", // 可调 0.3~0.5
+                "background-opacity": 1
+              }
+            },
+            {
+              id: "country-fill",
+              type: "fill",
+              source: "countries",
+              "source-layer": "country",
+              paint: {
+                "fill-color": "rgba(50, 50, 50, 0.1)",  // 极淡填充
+                "fill-opacity": 0.8
+              }
+            },
+            {
+              id: "hills",
+              type: "hillshade",
+              source: "dem",
+              paint: {
+                "hillshade-exaggeration": 0.25,
+              },
+            },
+            {
+              id: "contour",
+              type: "line",
+              source: "contour_src",
+              "source-layer": "contours",
+              paint: {
+                "line-color": [
+                  "interpolate",
+                  ["linear"],
+                  ["get", "ele"],
+                    960, "#d0f1ec",
+                    980, "#bae4d5",
+                    1000, "#d6f1b2",
+                    1010, "#c0ffac",
+                    1020, "#f3f6b3",
+                    1030, "#fff176",
+                    1040, "#ebcee2"
+                ],
+                "line-width": ["match", ["get", "level"], 1, 1, 0.5],
+              },
+              layout: {
+                "line-join": "round",
+              },
+            },
+            {
+              id: "contour-text",
+              type: "symbol",
+              source: "contour_src",
+              "source-layer": "contours",
+              filter: [">=", ["get", "level"], 0],
+              paint: {
+                // "text-halo-color": "white",
+                // "text-halo-width": 1,
+                "text-halo-color": [
+                  "interpolate",
+                  ["linear"],
+                  ["get", "ele"],
+                    960, "rgba(208, 241, 236, 0.6)",
+                    980, "rgba(186, 228, 213, 0.6)",
+                    1000, "rgba(214, 241, 178, 0.6)",
+                    1010, "rgba(192, 255, 172, 0.6)",
+                    1020, "rgba(243, 246, 179, 0.6)",
+                    1030, "rgba(255, 241, 118, 0.6)",
+                    1040, "rgba(235, 206, 226, 0.6)"
+                ],
+                "text-halo-width": 4
+              },
+              layout: {
+                "symbol-placement": "line",
+                "text-anchor": "center",
+                "text-size": 10,
+                "text-field": [
+                  "concat",
+                  ["to-string", ["get", "ele"]],
+                  "",
+                ],
+                "text-font": ["Noto Sans Regular"],
+              },
+            },
+          ],
+        },
+      });
+    </script>
+  </body>
+</html>

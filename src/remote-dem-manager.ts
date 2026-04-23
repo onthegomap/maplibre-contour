@@ -7,6 +7,7 @@ import type {
   ContourTile,
   DemManager,
   DemManagerInitizlizationParameters,
+  DemSourceSnapshot,
   DemTile,
   Encoding,
   FetchResponse,
@@ -41,10 +42,12 @@ export default class RemoteDemManager implements DemManager {
   managerId: number;
   actor: Actor<WorkerDispatch>;
   loaded: Promise<any>;
+  activeSourceKey: string;
 
   constructor(options: DemManagerInitizlizationParameters) {
     const managerId = (this.managerId = ++id);
     this.actor = options.actor || defaultActor();
+    this.activeSourceKey = options.source.key;
     this.loaded = this.actor.send(
       "init",
       [],
@@ -110,4 +113,25 @@ export default class RemoteDemManager implements DemManager {
       y,
       options,
     );
+
+  setSource(source: DemSourceSnapshot): boolean {
+    if (this.activeSourceKey === source.key) {
+      return false;
+    }
+    this.activeSourceKey = source.key;
+    this.actor.send(
+      "setSource",
+      [],
+      new AbortController(),
+      undefined,
+      this.managerId,
+      source,
+    );
+    return true;
+  }
+
+  /** Updates the DEM tile URL pattern */
+  updateUrl(url: string): void {
+    this.setSource({ key: url, urlPattern: url });
+  }
 }
