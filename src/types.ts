@@ -1,5 +1,6 @@
 import type Actor from "./actor";
 import type { Timer } from "./performance";
+import type { PressureCenter, PressureCenterOptions } from "./pressure-centers";
 import type WorkerDispatch from "./worker-dispatch";
 
 /** Scheme used to map pixel rgb values elevations. */
@@ -23,6 +24,23 @@ export interface ContourTile {
 export interface TransferrableContourTile
   extends ContourTile,
     IsTransferrable {}
+export interface PressureCenterTileRequest {
+  z: number;
+  x: number;
+  y: number;
+  tileSize?: number;
+}
+export interface PressureCenterCalculation {
+  centers: PressureCenter[];
+  complete: boolean;
+}
+export interface PressureCenterTileOptions extends PressureCenterOptions {
+  centerLayer?: string;
+  extent?: number;
+  typeKey?: string;
+  valueKey?: string;
+  prominenceKey?: string;
+}
 
 export interface FetchResponse {
   data: Blob;
@@ -143,6 +161,20 @@ export interface DemManager {
     abortController: AbortController,
     timer?: Timer,
   ): Promise<ContourTile>;
+  fetchPressureCenters(
+    tiles: PressureCenterTileRequest[],
+    options: PressureCenterOptions,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<PressureCenterCalculation>;
+  fetchPressureCenterTile(
+    z: number,
+    x: number,
+    y: number,
+    options: PressureCenterTileOptions,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<ContourTile>;
   /** Switches to a DEM tile source and returns false when the active source is unchanged */
   setSource(source: DemSourceSnapshot): boolean;
   /** Updates the DEM tile URL pattern */
@@ -173,6 +205,7 @@ export type DemManagerInitizlizationParameters =
     decodeImage?: DecodeImageFunction;
     getTile?: GetTileFunction;
     actor?: Actor<WorkerDispatch>;
+    dedicatedWorker?: boolean;
   };
 
 export type InitMessage = DemManagerRequiredInitializationParameters & {

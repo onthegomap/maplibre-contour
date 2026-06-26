@@ -1,13 +1,23 @@
 import { LocalDemManager } from "./local-dem-manager";
-import { decodeOptions, encodeOptions, getOptionsForZoom } from "./utils";
+import {
+  decodeOptions,
+  decodePressureCenterOptions,
+  encodeOptions,
+  encodePressureCenterOptions,
+  getOptionsForZoom,
+} from "./utils";
 import RemoteDemManager from "./remote-dem-manager";
 import type {
   DemManager,
   DemSourceSnapshot,
   DemTile,
   GlobalContourTileOptions,
+  PressureCenterCalculation,
+  PressureCenterTileRequest,
+  PressureCenterTileOptions,
   Timing,
 } from "./types";
+import type { PressureCenterOptions } from "./pressure-centers";
 import type WorkerDispatch from "./worker-dispatch";
 import Actor from "./actor";
 import { Timer } from "./performance";
@@ -100,6 +110,8 @@ export class DemSource {
   sharedDemProtocolId: string;
   contourProtocolId: string;
   contourProtocolUrlBase: string;
+  pressureCenterProtocolId: string;
+  pressureCenterProtocolUrlBase: string;
   manager: DemManager;
   sharedDemProtocolUrl: string;
   timingCallbacks: Array<(timing: Timing) => void> = [];
@@ -114,6 +126,7 @@ export class DemSource {
     worker = true,
     timeoutMs = 10_000,
     actor,
+    dedicatedWorker = false,
   }: {
     /** Remote DEM tile url using `{z}` `{x}` and `{y}` placeholders */
     url: string;
@@ -127,6 +140,8 @@ export class DemSource {
     timeoutMs?: number;
     /** Handle requests in a shared web worker to reduce UI-thread jank */
     worker?: boolean;
+    /** Use a separate worker instead of the shared worker. */
+    dedicatedWorker?: boolean;
     actor?: Actor<WorkerDispatch>;
   }) {
     let protocolPrefix = id;
@@ -137,8 +152,10 @@ export class DemSource {
     used.add(protocolPrefix);
     this.sharedDemProtocolId = `${protocolPrefix}-shared`;
     this.contourProtocolId = `${protocolPrefix}-contour`;
+    this.pressureCenterProtocolId = `${protocolPrefix}-pressure-centers`;
     this.sharedDemProtocolUrl = `${this.sharedDemProtocolId}://{z}/{x}/{y}`;
     this.contourProtocolUrlBase = `${this.contourProtocolId}://{z}/{x}/{y}`;
+    this.pressureCenterProtocolUrlBase = `${this.pressureCenterProtocolId}://{z}/{x}/{y}`;
     const ManagerClass = worker ? RemoteDemManager : LocalDemManager;
     this.manager = new ManagerClass({
       source: sourceSnapshot(url),
@@ -147,6 +164,7 @@ export class DemSource {
       maxzoom,
       timeoutMs,
       actor,
+      dedicatedWorker,
     });
   }
 
@@ -170,6 +188,24 @@ export class DemSource {
   }
 
   /**
+   * Finds pressure H/L centers for the requested DEM tiles.
+   *
+   * When this source is worker-backed, both tile decoding and center detection
+   * run in the shared worker so playback and map interactions do not block.
+   */
+  findPressureCenters(
+    tiles: PressureCenterTileRequest[],
+    options: PressureCenterOptions = {},
+    abortController?: AbortController,
+  ): Promise<PressureCenterCalculation> {
+    return this.manager.fetchPressureCenters(
+      tiles,
+      options,
+      abortController || new AbortController(),
+    );
+  }
+
+  /**
    * Adds contour and shared DEM protocol handlers to maplibre.
    *
    * @param maplibre maplibre global object
@@ -179,6 +215,7 @@ export class DemSource {
   }) => {
     maplibre.addProtocol(this.sharedDemProtocolId, this.sharedDemProtocol);
     maplibre.addProtocol(this.contourProtocolId, this.contourProtocol);
+    maplibre.addProtocol(this.pressureCenterProtocolId, this.pressureCenterProtocol);
   };
 
   parseUrl(url: string): [number, number, number] {
@@ -250,8 +287,36 @@ export class DemSource {
     }
   };
 
+  pressureCenterProtocolV4: AddProtocolAction = async (
+    request: RequestParameters,
+    abortController: AbortController,
+  ) => {
+    const timer = new Timer("main");
+    let timing: Timing;
+    try {
+      const [z, x, y] = this.parseUrl(request.url);
+      const options = decodePressureCenterOptions(request.url);
+      const data = await this.manager.fetchPressureCenterTile(
+        z,
+        x,
+        y,
+        options,
+        abortController,
+        timer,
+      );
+      timing = timer.finish(request.url);
+      return { data: data.arrayBuffer };
+    } catch (error) {
+      timing = timer.error(request.url);
+      throw error;
+    } finally {
+      this.timingCallbacks.forEach((cb) => cb(timing));
+    }
+  };
+
   contourProtocol: V3OrV4Protocol = v3compat(this.contourProtocolV4);
   sharedDemProtocol: V3OrV4Protocol = v3compat(this.sharedDemProtocolV4);
+  pressureCenterProtocol: V3OrV4Protocol = v3compat(this.pressureCenterProtocolV4);
 
   /**
    * Returns a URL with the correct maplibre protocol prefix and all `option` encoded in request parameters.
@@ -259,6 +324,11 @@ export class DemSource {
   contourProtocolUrl = (options: GlobalContourTileOptions) => {
     const version = this.sourceVersion > 0 ? `/${this.sourceVersion}` : "";
     return `${this.contourProtocolUrlBase}${version}?${encodeOptions(options)}`;
+  };
+
+  pressureCenterProtocolUrl = (options: PressureCenterTileOptions) => {
+    const version = this.sourceVersion > 0 ? `/${this.sourceVersion}` : "";
+    return `${this.pressureCenterProtocolUrlBase}${version}?${encodePressureCenterOptions(options)}`;
   };
 
   /**

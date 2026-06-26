@@ -3,6 +3,7 @@ import type {
   DemTile,
   GlobalContourTileOptions,
   IndividualContourTileOptions,
+  PressureCenterTileOptions,
   TransferrableContourTile,
   TransferrableDemTile,
 } from "./types";
@@ -68,6 +69,50 @@ export function decodeOptions(options: string): GlobalContourTileOptions {
         return [k, v];
       }),
   ) as any as GlobalContourTileOptions;
+}
+
+export function encodePressureCenterOptions(
+  options: PressureCenterTileOptions,
+): string {
+  return sortedEntries(options)
+    .map(
+      ([key, value]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+    )
+    .join("&");
+}
+
+export function decodePressureCenterOptions(
+  options: string,
+): PressureCenterTileOptions {
+  return Object.fromEntries(
+    options
+      .replace(/^.*\?/, "")
+      .split("&")
+      .filter(Boolean)
+      .map((part) => {
+        const parts = part.split("=").map(decodeURIComponent);
+        const key = parts[0] as keyof PressureCenterTileOptions;
+        let value: string | number | [number, number] = parts[1];
+        switch (key) {
+          case "smoothRadiusPx":
+          case "neighborhoodRadiusPx":
+          case "sampleStridePx":
+          case "plateauTolerance":
+          case "closedContourDelta":
+          case "closedContourRadiusKm":
+          case "minDistanceKm":
+          case "maxCentersPerType":
+          case "extent":
+            value = Number(value);
+            break;
+          case "validRange":
+            value = value.split(",").map(Number) as [number, number];
+            break;
+        }
+        return [key, value];
+      }),
+  ) as PressureCenterTileOptions;
 }
 
 export function encodeIndividualOptions(

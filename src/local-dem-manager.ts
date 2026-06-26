@@ -2,6 +2,7 @@ import AsyncCache from "./cache";
 import defaultDecodeImage from "./decode-image";
 import { HeightTile } from "./height-tile";
 import generateIsolines from "./isolines";
+import { findPressureCentersInTiles } from "./pressure-centers";
 import { encodeIndividualOptions, isAborted, withTimeout } from "./utils";
 import type {
   ContourTile,
@@ -14,7 +15,11 @@ import type {
   FetchResponse,
   GetTileFunction,
   IndividualContourTileOptions,
+  PressureCenterCalculation,
+  PressureCenterTileRequest,
+  PressureCenterTileOptions,
 } from "./types";
+import type { PressureCenterOptions } from "./pressure-centers";
 import encodeVectorTile, { GeomType } from "./vtpbf";
 import { Timer } from "./performance";
 
@@ -43,6 +48,7 @@ export class LocalDemManager implements DemManager {
   tileCache: AsyncCache<string, FetchResponse>;
   parsedCache: AsyncCache<string, DemTile>;
   contourCache: AsyncCache<string, ContourTile>;
+  pressureCenterTileCache: AsyncCache<string, ContourTile>;
   activeSource: DemSourceSnapshot;
   sources: Map<string, DemSourceSnapshot>;
   encoding: Encoding;
@@ -56,6 +62,7 @@ export class LocalDemManager implements DemManager {
     this.tileCache = new AsyncCache(options.cacheSize);
     this.parsedCache = new AsyncCache(options.cacheSize);
     this.contourCache = new AsyncCache(options.cacheSize);
+    this.pressureCenterTileCache = new AsyncCache(options.cacheSize);
     this.timeoutMs = options.timeoutMs;
     this.activeSource = options.source;
     this.sources = new Map([[options.source.key, options.source]]);
@@ -300,6 +307,174 @@ export class LocalDemManager implements DemManager {
     );
   }
 
+  async fetchPressureCenters(
+    tiles: PressureCenterTileRequest[],
+    options: PressureCenterOptions,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<PressureCenterCalculation> {
+    const source = this.activeSource;
+    const tileResults = await Promise.allSettled(
+      tiles.map(async (tile) => ({
+        ...tile,
+        tile: await this.fetchAndParseTileForSource(
+          source,
+          tile.z,
+          tile.x,
+          tile.y,
+          abortController,
+          timer,
+        ),
+      })),
+    );
+    const demTiles = tileResults
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value);
+
+    if (demTiles.length === 0 || isAborted(abortController)) {
+      return { centers: [], complete: false };
+    }
+
+    const mark = timer?.marker("isoline");
+    // H/L center detection is cross-tile CPU work, so run it beside contour
+    // generation in the worker-backed manager instead of blocking the UI thread.
+    const centers = findPressureCentersInTiles(
+      demTiles,
+      options,
+      () => !isAborted(abortController),
+    );
+    mark?.();
+
+    if (isAborted(abortController)) {
+      return { centers: [], complete: false };
+    }
+
+    return {
+      centers,
+      complete: demTiles.length === tiles.length,
+    };
+  }
+
+  fetchPressureCenterTile(
+    z: number,
+    x: number,
+    y: number,
+    options: PressureCenterTileOptions,
+    parentAbortController: AbortController,
+    timer?: Timer,
+  ): Promise<ContourTile> {
+    const {
+      centerLayer = "pressure-centers",
+      extent = 4096,
+      typeKey = "type",
+      valueKey = "value",
+      prominenceKey = "prominence",
+      ...centerOptions
+    } = options;
+    const source = this.activeSource;
+    const centerKey = JSON.stringify(centerOptions);
+    const key = [source.key, z, x, y, "pressure-centers", centerKey, centerLayer].join("/");
+
+    return this.pressureCenterTileCache.get(
+      key,
+      async (_, childAbortController) => {
+        // Match the per-tile 3×3 context pattern used by fetchContourTile.
+        // Expand the requested tile area at maxzoom by one tile in each
+        // direction so the closed-contour BFS does not hit an artificial
+        // tile boundary and reject legitimate H/L centers.
+        const dz = this.maxzoom - z;
+        const xMin = x << dz;
+        const yMin = y << dz;
+        const xMax = (x + 1) << dz;
+        const yMax = (y + 1) << dz;
+        const n = 1 << this.maxzoom;
+
+        const seen = new Set<string>();
+        const tileCoords: { x: number; y: number }[] = [];
+        for (let ty = yMin; ty < yMax; ty++) {
+          for (let tx = xMin; tx < xMax; tx++) {
+            for (let ny = -1; ny <= 1; ny++) {
+              for (let nx = -1; nx <= 1; nx++) {
+                const adjX = ((tx + nx) % n + n) % n;
+                const adjY = ((ty + ny) % n + n) % n;
+                const key = `${adjX}:${adjY}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                tileCoords.push({ x: adjX, y: adjY });
+              }
+            }
+          }
+        }
+
+        const tilePromises = tileCoords.map((tc) =>
+          this.fetchAndParseTileForSource(
+            source,
+            this.maxzoom,
+            tc.x,
+            tc.y,
+            childAbortController,
+            timer,
+          ).then((tile) => ({
+            z: this.maxzoom,
+            x: tc.x,
+            y: tc.y,
+            tile,
+            tileSize: tile.width,
+          })),
+        );
+
+        if (isAborted(childAbortController)) {
+          return { arrayBuffer: new ArrayBuffer(0) };
+        }
+
+        const tileResults = await Promise.allSettled(tilePromises);
+        const demTiles = tileResults
+          .filter((r) => r.status === "fulfilled" && r.value.tile)
+          .map((r) => (r as PromiseFulfilledResult<{ z: number; x: number; y: number; tile: DemTile; tileSize: number }>).value);
+
+        if (demTiles.length === 0 || isAborted(childAbortController)) {
+          return { arrayBuffer: new ArrayBuffer(0) };
+        }
+
+        const mark = timer?.marker("isoline");
+        const allCenters = findPressureCentersInTiles(
+          demTiles,
+          centerOptions,
+          () => !isAborted(childAbortController),
+        );
+        mark?.();
+
+        if (isAborted(childAbortController)) {
+          return { arrayBuffer: new ArrayBuffer(0) };
+        }
+
+        const centers = allCenters.filter((center) =>
+          isLngLatInTile(center.lng, center.lat, z, x, y),
+        );
+
+        const result = encodeVectorTile({
+          extent,
+          layers: {
+            [centerLayer]: {
+              features: centers.map((center) => ({
+                type: GeomType.POINT,
+                geometry: [lngLatToVectorTilePoint(center.lng, center.lat, z, x, y, extent)],
+                properties: {
+                  [typeKey]: center.type,
+                  [valueKey]: center.value,
+                  [prominenceKey]: center.prominence,
+                },
+              })),
+            },
+          },
+        });
+
+        return { arrayBuffer: result.slice().buffer };
+      },
+      parentAbortController,
+    );
+  }
+
   setSource(source: DemSourceSnapshot): boolean {
     if (this.activeSource.key === source.key) {
       return false;
@@ -313,4 +488,44 @@ export class LocalDemManager implements DemManager {
   updateUrl(url: string): void {
     this.setSource({ key: url, urlPattern: url });
   }
+}
+
+function isLngLatInTile(
+  lng: number,
+  lat: number,
+  z: number,
+  x: number,
+  y: number,
+): boolean {
+  const point = lngLatToTileXY(lng, lat, z);
+  return point.x >= x && point.x < x + 1 && point.y >= y && point.y < y + 1;
+}
+
+function lngLatToVectorTilePoint(
+  lng: number,
+  lat: number,
+  z: number,
+  x: number,
+  y: number,
+  extent: number,
+): number[] {
+  const point = lngLatToTileXY(lng, lat, z);
+  return [
+    Math.round((point.x - x) * extent),
+    Math.round((point.y - y) * extent),
+  ];
+}
+
+function lngLatToTileXY(
+  lng: number,
+  lat: number,
+  z: number,
+): { x: number; y: number } {
+  const n = 2 ** z;
+  const latRad = (Math.max(-85.05112878, Math.min(85.05112878, lat)) * Math.PI) / 180;
+  const normalizedLng = ((((lng + 180) % 360) + 360) % 360) - 180;
+  return {
+    x: ((normalizedLng + 180) / 360) * n,
+    y: ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n,
+  };
 }

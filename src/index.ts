@@ -4,6 +4,10 @@ import { decodeParsedImage } from "./decode-image";
 import { LocalDemManager } from "./local-dem-manager";
 import CONFIG from "./config";
 import { HeightTile } from "./height-tile";
+import {
+  findPressureCentersInTiles,
+  mercatorPixelToLngLat,
+} from "./pressure-centers";
 
 const exported = {
   generateIsolines,
@@ -11,6 +15,8 @@ const exported = {
   HeightTile,
   LocalDemManager,
   decodeParsedImage,
+  findPressureCentersInTiles,
+  mercatorPixelToLngLat,
   set workerUrl(url: string) {
     CONFIG.workerUrl = url;
   },

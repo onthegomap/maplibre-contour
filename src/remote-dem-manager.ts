@@ -12,7 +12,11 @@ import type {
   Encoding,
   FetchResponse,
   IndividualContourTileOptions,
+  PressureCenterCalculation,
+  PressureCenterTileOptions,
+  PressureCenterTileRequest,
 } from "./types";
+import type { PressureCenterOptions } from "./pressure-centers";
 import { prepareDemTile } from "./utils";
 
 let _actor: Actor<WorkerDispatch> | undefined;
@@ -28,11 +32,15 @@ export class MainThreadDispatch {
 
 function defaultActor(): Actor<WorkerDispatch> {
   if (!_actor) {
-    const worker = new Worker(CONFIG.workerUrl);
-    const dispatch = new MainThreadDispatch();
-    _actor = new Actor(worker, dispatch);
+    _actor = createWorkerActor();
   }
   return _actor;
+}
+
+function createWorkerActor(): Actor<WorkerDispatch> {
+  const worker = new Worker(CONFIG.workerUrl);
+  const dispatch = new MainThreadDispatch();
+  return new Actor(worker, dispatch);
 }
 
 /**
@@ -46,7 +54,7 @@ export default class RemoteDemManager implements DemManager {
 
   constructor(options: DemManagerInitizlizationParameters) {
     const managerId = (this.managerId = ++id);
-    this.actor = options.actor || defaultActor();
+    this.actor = options.actor || (options.dedicatedWorker ? createWorkerActor() : defaultActor());
     this.activeSourceKey = options.source.key;
     this.loaded = this.actor.send(
       "init",
@@ -104,6 +112,42 @@ export default class RemoteDemManager implements DemManager {
   ): Promise<ContourTile> =>
     this.actor.send(
       "fetchContourTile",
+      [],
+      abortController,
+      timer,
+      this.managerId,
+      z,
+      x,
+      y,
+      options,
+    );
+
+  fetchPressureCenters = (
+    tiles: PressureCenterTileRequest[],
+    options: PressureCenterOptions,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<PressureCenterCalculation> =>
+    this.actor.send(
+      "fetchPressureCenters",
+      [],
+      abortController,
+      timer,
+      this.managerId,
+      tiles,
+      options,
+    );
+
+  fetchPressureCenterTile = (
+    z: number,
+    x: number,
+    y: number,
+    options: PressureCenterTileOptions,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<ContourTile> =>
+    this.actor.send(
+      "fetchPressureCenterTile",
       [],
       abortController,
       timer,

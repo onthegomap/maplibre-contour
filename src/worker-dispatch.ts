@@ -5,9 +5,13 @@ import type {
   DemSourceSnapshot,
   FetchResponse,
   IndividualContourTileOptions,
+  PressureCenterCalculation,
+  PressureCenterTileOptions,
+  PressureCenterTileRequest,
   InitMessage,
   TransferrableDemTile,
 } from "./types";
+import type { PressureCenterOptions } from "./pressure-centers";
 import { prepareContourTile, prepareDemTile } from "./utils";
 
 const noManager = (managerId: number): Promise<any> =>
@@ -66,6 +70,40 @@ export default class WorkerDispatch {
   ): Promise<ContourTile> =>
     prepareContourTile(
       this.managers[managerId]?.fetchContourTile(
+        z,
+        x,
+        y,
+        options,
+        abortController,
+        timer,
+      ) || noManager(managerId),
+    );
+
+  fetchPressureCenters = (
+    managerId: number,
+    tiles: PressureCenterTileRequest[],
+    options: PressureCenterOptions,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<PressureCenterCalculation> =>
+    this.managers[managerId]?.fetchPressureCenters(
+      tiles,
+      options,
+      abortController,
+      timer,
+    ) || noManager(managerId);
+
+  fetchPressureCenterTile = (
+    managerId: number,
+    z: number,
+    x: number,
+    y: number,
+    options: PressureCenterTileOptions,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<ContourTile> =>
+    prepareContourTile(
+      this.managers[managerId]?.fetchPressureCenterTile(
         z,
         x,
         y,

@@ -268,6 +268,39 @@ test("e2e contour tile", async () => {
   });
 });
 
+test("e2e pressure centers run through worker dispatch", async () => {
+  global.fetch = jest.fn().mockImplementation(async () => {
+    jest.advanceTimersByTime(1);
+    return new Response(
+      new Blob([Uint8Array.from([1, 2])], { type: "image/png" }),
+      {
+        status: 200,
+      },
+    );
+  });
+
+  const result = await source.findPressureCenters(
+    [{ z: 0, x: 0, y: 0, tileSize: 4 }],
+    {
+      smoothRadiusPx: 0,
+      neighborhoodRadiusPx: 1,
+      closedContourDelta: 1,
+      closedContourRadiusKm: 20_000,
+      minDistanceKm: 0,
+      maxCentersPerType: 10,
+      validRange: [0, 20],
+    },
+  );
+
+  expect(result.complete).toBe(true);
+  expect(result.centers).toHaveLength(1);
+  expect(result.centers[0]).toMatchObject({
+    type: "H",
+    value: 15,
+    prominence: 10,
+  });
+});
+
 test("decode image from worker", async () => {
   const result = await workerActor.send(
     "decodeImage",
