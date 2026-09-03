@@ -308,3 +308,38 @@ test("fake decode image and fetch tile", async () => {
   expect(demTile.data).toEqual(expectedElevations);
   expect(getTileSpy.mock.calls[0][0]).toBe("https://example/1/2/3.png");
 });
+
+test("fetchDem floors the DEM zoom at 0 when overzoom exceeds z", async () => {
+  const getTileSpy = jest.fn().mockReturnValue(Promise.resolve({}));
+  const demManager = new LocalDemManager({
+    demUrlPattern: "https://example/{z}/{x}/{y}.png",
+    cacheSize: 100,
+    encoding: "terrarium",
+    maxzoom: 11,
+    timeoutMs: 10000,
+    decodeImage: async () => ({
+      width: 4,
+      height: 4,
+      data: expectedElevations,
+    }),
+    getTile: getTileSpy,
+  });
+  const heightTile = await demManager.fetchDem(
+    1,
+    1,
+    1,
+    { overzoom: 2, levels: [10] },
+    new AbortController(),
+  );
+  // z1 asks for z-1; clamped to z0 and split into the bottom-right quarter
+  expect(getTileSpy.mock.calls[0][0]).toBe("https://example/0/0/0.png");
+  expect(heightTile.width).toBe(2);
+  expect(heightTile.height).toBe(2);
+  expect([
+    [heightTile.get(0, 0), heightTile.get(1, 0)],
+    [heightTile.get(0, 1), heightTile.get(1, 1)],
+  ]).toEqual([
+    [15, 5],
+    [5, 5],
+  ]);
+});
