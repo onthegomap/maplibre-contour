@@ -6,6 +6,7 @@ import { MainThreadDispatch } from "./remote-dem-manager";
 import type { DemTile, Timing } from "./types";
 import { VectorTile } from "@mapbox/vector-tile";
 import Pbf from "pbf";
+import { MessageChannel } from "worker_threads";
 import { LocalDemManager } from "./local-dem-manager";
 
 beforeEach(() => {
@@ -266,6 +267,56 @@ test("e2e contour tile", async () => {
     ],
     url: "dem-contour://10/21/30?overzoom=0&thresholds=10*10",
   });
+});
+
+test("contour tile buffer survives transfer when re-requested without worker", async () => {
+  global.fetch = jest.fn().mockImplementation(async () => {
+    jest.advanceTimersByTime(1);
+    return new Response(
+      new Blob([Uint8Array.from([1, 2])], { type: "image/png" }),
+      {
+        status: 200,
+      },
+    );
+  });
+  const localSource = new DemSource({
+    url: "https://example/{z}/{x}/{y}.png",
+    cacheSize: 100,
+    encoding: "terrarium",
+    maxzoom: 11,
+    worker: false,
+  });
+  const url = localSource
+    .contourProtocolUrl({
+      thresholds: {
+        10: 10,
+      },
+      overzoom: 0,
+    })
+    .replace("{z}", "10")
+    .replace("{x}", "20")
+    .replace("{y}", "30");
+
+  const first: ArrayBuffer = (
+    await localSource.contourProtocol({ url }, new AbortController())
+  ).data;
+  const byteLength = first.byteLength;
+  expect(byteLength).toBeGreaterThan(0);
+
+  // maplibre transfers vector tile data to its own worker, which detaches
+  // the buffer
+  const { port1, port2 } = new MessageChannel();
+  port1.postMessage(first, [first]);
+  port1.close();
+  port2.close();
+  expect(first.byteLength).toBe(0);
+
+  const second: ArrayBuffer = (
+    await localSource.contourProtocol({ url }, new AbortController())
+  ).data;
+  expect(global.fetch).toHaveBeenCalledTimes(9);
+  expect(second.byteLength).toBe(byteLength);
+  expect(new VectorTile(new Pbf(second)).layers.contours.length).toBe(1);
 });
 
 test("decode image from worker", async () => {

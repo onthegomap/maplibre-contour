@@ -124,13 +124,12 @@ export function prepareDemTile(
 export function prepareContourTile(
   promise: Promise<ContourTile>,
 ): Promise<TransferrableContourTile> {
-  return promise.then(({ arrayBuffer }) => {
-    const clone = copy(arrayBuffer);
-    return {
-      arrayBuffer: clone,
-      transferrables: [clone],
-    };
-  });
+  // LocalDemManager returns a fresh buffer each time, so it is safe to
+  // transfer without copying again
+  return promise.then(({ arrayBuffer }) => ({
+    arrayBuffer,
+    transferrables: [arrayBuffer],
+  }));
 }
 
 let supportsOffscreenCanvas: boolean | null = null;
