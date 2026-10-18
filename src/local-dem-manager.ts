@@ -83,6 +83,7 @@ export class LocalDemManager implements DemManager {
           this.timeoutMs,
           this.getTile(url, childAbortController).finally(() => mark?.()),
           childAbortController,
+          `Fetching DEM tile ${url}`,
         );
       },
       parentAbortController,

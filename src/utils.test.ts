@@ -115,7 +115,16 @@ test("withTimeout - times out", async () => {
   expect(ac.signal.aborted).toBeFalsy();
   jest.advanceTimersByTime(2);
   expect(ac.signal.aborted).toBeTruthy();
-  await expect(result).rejects.toThrow(new Error("timed out"));
+  await expect(result).rejects.toThrow(new Error("timed out after 1000ms"));
+});
+
+test("withTimeout - times out with description", async () => {
+  const ac = new AbortController();
+  const result = withTimeout(1000, new Promise(() => {}), ac, "Fetching tile");
+  jest.advanceTimersByTime(1001);
+  await expect(result).rejects.toThrow(
+    new Error("Fetching tile timed out after 1000ms"),
+  );
 });
 
 test("withTimeout - resolve cancels timer", async () => {
