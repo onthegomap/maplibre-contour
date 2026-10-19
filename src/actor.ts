@@ -139,6 +139,11 @@ export default class Actor<T> {
       this.postMessage({ id: thisId, type: "cancel" });
     });
 
-    return withTimeout(this.timeoutMs, value, abortController);
+    return withTimeout(
+      this.timeoutMs,
+      value,
+      abortController,
+      `Worker request "${name}"`,
+    );
   }
 }

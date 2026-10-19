@@ -180,10 +180,15 @@ export function withTimeout<T>(
   timeoutMs: number,
   value: Promise<T>,
   abortController?: AbortController,
+  description?: string,
 ): Promise<T> {
   let reject: (error: Error) => void = () => {};
   const timeout = setTimeout(() => {
-    reject(new Error("timed out"));
+    reject(
+      new Error(
+        `${description ? `${description} ` : ""}timed out after ${timeoutMs}ms`,
+      ),
+    );
     abortController?.abort();
   }, timeoutMs);
   onAbort(abortController, () => {
