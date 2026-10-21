@@ -2,7 +2,13 @@ import AsyncCache from "./cache";
 import defaultDecodeImage from "./decode-image";
 import { HeightTile } from "./height-tile";
 import generateIsolines from "./isolines";
-import { copy, encodeIndividualOptions, isAborted, withTimeout } from "./utils";
+import {
+  copy,
+  encodeIndividualOptions,
+  freshUntil,
+  isAborted,
+  withTimeout,
+} from "./utils";
 import type {
   ContourTile,
   DecodeImageFunction,
@@ -62,6 +68,13 @@ export class LocalDemManager implements DemManager {
     this.getTile = options.getTile || defaultGetTile;
   }
 
+  demUrl(z: number, x: number, y: number): string {
+    return this.demUrlPattern
+      .replace("{z}", z.toString())
+      .replace("{x}", x.toString())
+      .replace("{y}", y.toString());
+  }
+
   fetchTile(
     z: number,
     x: number,
@@ -69,19 +82,21 @@ export class LocalDemManager implements DemManager {
     parentAbortController: AbortController,
     timer?: Timer,
   ): Promise<FetchResponse> {
-    const url = this.demUrlPattern
-      .replace("{z}", z.toString())
-      .replace("{x}", x.toString())
-      .replace("{y}", y.toString());
+    const url = this.demUrl(z, x, y);
     timer?.useTile(url);
     return this.tileCache.get(
       url,
-      (_, childAbortController) => {
+      (_, childAbortController, expire) => {
         timer?.fetchTile(url);
         const mark = timer?.marker("fetch");
         return withTimeout(
           this.timeoutMs,
-          this.getTile(url, childAbortController).finally(() => mark?.()),
+          this.getTile(url, childAbortController)
+            .then((response) => {
+              expire(freshUntil(response));
+              return response;
+            })
+            .finally(() => mark?.()),
           childAbortController,
           `Fetching DEM tile ${url}`,
         );
@@ -98,16 +113,13 @@ export class LocalDemManager implements DemManager {
   ): Promise<DemTile> => {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
-    const url = this.demUrlPattern
-      .replace("{z}", z.toString())
-      .replace("{x}", x.toString())
-      .replace("{y}", y.toString());
+    const url = this.demUrl(z, x, y);
 
     timer?.useTile(url);
 
     return this.parsedCache.get(
       url,
-      async (_, childAbortController) => {
+      async (_, childAbortController, expire) => {
         const response = await self.fetchTile(
           z,
           x,
@@ -115,6 +127,8 @@ export class LocalDemManager implements DemManager {
           childAbortController,
           timer,
         );
+        // decoded, it's as fresh as the fetched tile it came from
+        expire(self.tileCache.expiresAt(url));
         if (isAborted(childAbortController)) throw new Error("canceled");
         const promise = self.decodeImage(
           response.data,
@@ -130,6 +144,22 @@ export class LocalDemManager implements DemManager {
     );
   };
 
+  /** The DEM tile that fetchDem reads for z/x/y: its zoom, x and y, and how many zooms finer z is */
+  demTileFor(
+    z: number,
+    x: number,
+    y: number,
+    options: IndividualContourTileOptions,
+  ): { zoom: number; newX: number; newY: number; subZ: number } {
+    const zoom = Math.max(
+      0,
+      Math.min(z - (options.overzoom || 0), this.maxzoom),
+    );
+    const subZ = z - zoom;
+    const div = 1 << subZ;
+    return { zoom, newX: Math.floor(x / div), newY: Math.floor(y / div), subZ };
+  }
+
   async fetchDem(
     z: number,
     x: number,
@@ -138,14 +168,8 @@ export class LocalDemManager implements DemManager {
     abortController: AbortController,
     timer?: Timer,
   ): Promise<HeightTile> {
-    const zoom = Math.max(
-      0,
-      Math.min(z - (options.overzoom || 0), this.maxzoom),
-    );
-    const subZ = z - zoom;
+    const { zoom, newX, newY, subZ } = this.demTileFor(z, x, y, options);
     const div = 1 << subZ;
-    const newX = Math.floor(x / div);
-    const newY = Math.floor(y / div);
 
     const tile = await this.fetchAndParseTile(
       zoom,
@@ -184,11 +208,21 @@ export class LocalDemManager implements DemManager {
     const key = [z, x, y, encodeIndividualOptions(options)].join("/");
     const cached = this.contourCache.get(
       key,
-      async (_, childAbortController) => {
+      async (_, childAbortController, expire) => {
         const max = 1 << z;
         const neighborPromises: (Promise<HeightTile> | undefined)[] = [];
+        const demUrls: string[] = [];
         for (let iy = y - 1; iy <= y + 1; iy++) {
           for (let ix = x - 1; ix <= x + 1; ix++) {
+            if (iy >= 0 && iy < max) {
+              const { zoom, newX, newY } = this.demTileFor(
+                z,
+                (ix + max) % max,
+                iy,
+                options,
+              );
+              demUrls.push(this.demUrl(zoom, newX, newY));
+            }
             neighborPromises.push(
               iy < 0 || iy >= max
                 ? undefined
@@ -204,6 +238,11 @@ export class LocalDemManager implements DemManager {
           }
         }
         const neighbors = await Promise.all(neighborPromises);
+        // cut from them: as fresh as the least fresh of them
+        const until = demUrls
+          .map((url) => this.parsedCache.expiresAt(url))
+          .filter((at): at is number => at !== undefined);
+        expire(until.length ? Math.min(...until) : undefined);
         let virtualTile = HeightTile.combineNeighbors(neighbors);
         if (!virtualTile || isAborted(childAbortController)) {
           return { arrayBuffer: new Uint8Array().buffer };
