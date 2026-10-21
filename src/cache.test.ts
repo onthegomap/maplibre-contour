@@ -92,3 +92,35 @@ test("dont cache failures", async () => {
   resolve("ok!");
   await expect(result2).resolves.toBe("ok!");
 });
+
+test("a value past the expiry its supplier set is fetched again", async () => {
+  const now = jest.spyOn(Date, "now").mockReturnValue(1000);
+  try {
+    const cache = new AsyncCache<string, number>(10);
+    let fetches = 0;
+    const getter =
+      (until: number | undefined) =>
+      async (
+        _: string,
+        __: AbortController,
+        expire: (at: number | undefined) => void,
+      ) => {
+        expire(until);
+        return ++fetches;
+      };
+    expect(await cache.get("a", getter(2000), new AbortController())).toBe(1);
+    expect(await cache.get("a", getter(2000), new AbortController())).toBe(1);
+    expect(cache.expiresAt("a")).toBe(2000);
+    now.mockReturnValue(2000);
+    expect(await cache.get("a", getter(undefined), new AbortController())).toBe(
+      2,
+    );
+    // no expiry: kept
+    now.mockReturnValue(1e9);
+    expect(await cache.get("a", getter(undefined), new AbortController())).toBe(
+      2,
+    );
+  } finally {
+    now.mockRestore();
+  }
+});

@@ -5,7 +5,12 @@ interface CacheItem<V> {
   waiting: number;
   abortController?: AbortController;
   item: Promise<V>;
+  /** When the value stops being fresh (ms since the epoch), once the supplier says; never when unset */
+  expires?: number;
 }
+
+/** Called by a supplier to say until when its value may be reused (ms since the epoch), or never past now */
+export type Expire = (at: number | undefined) => void;
 
 let num = 0;
 
@@ -26,19 +31,31 @@ export default class AsyncCache<K, V> {
 
   get = (
     key: K,
-    supplier: (key: K, abortController: AbortController) => Promise<V>,
+    supplier: (
+      key: K,
+      abortController: AbortController,
+      expire: Expire,
+    ) => Promise<V>,
     abortController: AbortController,
   ): Promise<V> => {
     let result: CacheItem<V> | undefined = this.items.get(key);
+    if (result?.expires !== undefined && result.expires <= Date.now()) {
+      // stale: asked for again (whoever still waits on it keeps the old one)
+      this.items.delete(key);
+      result = undefined;
+    }
     if (!result) {
       const sharedAbortController = new AbortController();
-      const value = supplier(key, sharedAbortController);
-      result = {
+      const item = {
         abortController: sharedAbortController,
-        item: value,
         lastUsed: ++num,
         waiting: 1,
-      };
+      } as CacheItem<V>;
+      // the supplier sets the item's expiry once it has its value
+      item.item = supplier(key, sharedAbortController, (at) => {
+        item.expires = at;
+      });
+      result = item;
       this.items.set(key, result);
       this.prune();
     } else {
@@ -81,6 +98,9 @@ export default class AsyncCache<K, V> {
       }
     }
   }
+
+  /** When the value under key stops being fresh (ms since the epoch); undefined if never, or not there */
+  expiresAt = (key: K): number | undefined => this.items.get(key)?.expires;
 
   clear = () => this.items.clear();
 }

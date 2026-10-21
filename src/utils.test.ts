@@ -10,6 +10,7 @@ import {
   offscreenCanvasSupported,
   shouldUseVideoFrame,
   withTimeout,
+  freshUntil,
 } from "./utils";
 import { Canvas } from "canvas";
 
@@ -163,4 +164,24 @@ test("should use video frame", async () => {
   OffscreenCanvas.mockClear();
   expect(shouldUseVideoFrame()).toBeFalsy();
   expect(window.OffscreenCanvas).toHaveBeenCalledTimes(1);
+});
+
+test("freshUntil", () => {
+  expect(freshUntil({}, 1000)).toBeUndefined();
+  expect(freshUntil({ cacheControl: "public, max-age=3" }, 1000)).toBe(4000);
+  expect(freshUntil({ cacheControl: "no-store" }, 1000)).toBe(1000);
+  expect(freshUntil({ cacheControl: "private, no-cache" }, 1000)).toBe(1000);
+  expect(freshUntil({ cacheControl: "Public, Max-Age=60" }, 0)).toBe(60000);
+  // max-age wins over Expires
+  expect(
+    freshUntil(
+      { cacheControl: "max-age=1", expires: "Thu, 01 Jan 1970 00:01:00 GMT" },
+      0,
+    ),
+  ).toBe(1000);
+  expect(freshUntil({ expires: "Thu, 01 Jan 1970 00:01:00 GMT" }, 0)).toBe(
+    60000,
+  );
+  expect(freshUntil({ expires: "0" }, 5)).toBe(5);
+  expect(freshUntil({ cacheControl: "public, immutable" }, 0)).toBeUndefined();
 });

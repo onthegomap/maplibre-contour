@@ -394,3 +394,59 @@ test("fetchDem floors the DEM zoom at 0 when overzoom exceeds z", async () => {
     [5, 5],
   ]);
 });
+
+test("a DEM tile and the contours cut from it are fetched again once its Cache-Control runs out", async () => {
+  // a placeholder kept 3 s (a server still making the real tile), and one without cache headers
+  const getTileSpy = jest.fn((url: string) =>
+    Promise.resolve(
+      url.includes("/10/")
+        ? { data: new Blob(), cacheControl: "public, max-age=3" }
+        : { data: new Blob() },
+    ),
+  );
+  const demManager = new LocalDemManager({
+    demUrlPattern: "https://example/{z}/{x}/{y}.png",
+    cacheSize: 100,
+    encoding: "terrarium",
+    maxzoom: 11,
+    timeoutMs: 10000,
+    decodeImage: async () => ({
+      width: 4,
+      height: 4,
+      data: expectedElevations,
+    }),
+    getTile: getTileSpy,
+  });
+  const fetches = (url: string) =>
+    getTileSpy.mock.calls.filter(([u]) => u === url).length;
+  const parse = (z: number) =>
+    demManager.fetchAndParseTile(z, 2, 3, new AbortController());
+  const contours = () =>
+    demManager.fetchContourTile(
+      10,
+      2,
+      3,
+      { levels: [10] },
+      new AbortController(),
+    );
+
+  await parse(10);
+  await parse(11);
+  await contours();
+  await parse(10);
+  await parse(11);
+  const contourFetches = getTileSpy.mock.calls.length;
+  await contours();
+  expect(fetches("https://example/10/2/3.png")).toBe(1);
+  expect(getTileSpy.mock.calls.length).toBe(contourFetches);
+
+  jest.setSystemTime(3000);
+  await parse(10);
+  await parse(11);
+  expect(fetches("https://example/10/2/3.png")).toBe(2);
+  expect(fetches("https://example/11/2/3.png")).toBe(1);
+  // the contour tile is cut again, from fresh DEM tiles
+  const before = getTileSpy.mock.calls.length;
+  await contours();
+  expect(getTileSpy.mock.calls.length).toBeGreaterThan(before);
+});

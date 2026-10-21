@@ -221,3 +221,28 @@ export function parseUrl(url: string): [number, number, number] {
   const [, z, x, y] = /\/\/(\d+)\/(\d+)\/(\d+)/.exec(url) || [];
   return [Number(z), Number(x), Number(y)];
 }
+
+/**
+ * Until when a fetched tile may be reused (ms since the epoch), from its `Cache-Control` (`no-store` and `no-cache`:
+ * not past now; `max-age`) or else its `Expires` (not an HTTP date: not past now). Undefined when neither says: kept as
+ * long as the cache has room.
+ */
+export function freshUntil(
+  response: { expires?: string; cacheControl?: string },
+  now: number = Date.now(),
+): number | undefined {
+  const cc = response.cacheControl?.toLowerCase();
+  if (cc) {
+    if (/(^|[\s,])(no-store|no-cache)([\s,=]|$)/.test(cc)) return now;
+    const maxAge = /(^|[\s,])max-age=(\d+)/.exec(cc);
+    if (maxAge) return now + Number(maxAge[2]) * 1000;
+  }
+  if (response.expires) {
+    // an HTTP date; anything else (often "0") means already expired (RFC 9111 5.3)
+    const at = /GMT$/i.test(response.expires.trim())
+      ? Date.parse(response.expires)
+      : NaN;
+    return Number.isNaN(at) ? now : at;
+  }
+  return undefined;
+}
