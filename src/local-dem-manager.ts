@@ -26,7 +26,10 @@ const defaultGetTile: GetTileFunction = async (
   };
   const response = await fetch(url, options);
   if (!response.ok) {
-    throw new Error(`Bad response: ${response.status} for ${url}`);
+    throw Object.assign(
+      new Error(`Bad response: ${response.status} for ${url}`),
+      { status: response.status },
+    );
   }
   return {
     data: await response.blob(),
@@ -34,6 +37,14 @@ const defaultGetTile: GetTileFunction = async (
     cacheControl: response.headers.get("cache-control") || undefined,
   };
 };
+
+/**
+ * Whether a DEM tile request failed because the tileset does not have that tile, as a sparse tileset that only
+ * holds its higher zooms where there is data answers, and not because it could not be fetched.
+ */
+function isNotFound(error: unknown): boolean {
+  return (error as { status?: number } | undefined)?.status === 404;
+}
 
 /**
  * Caches, decodes, and processes raster tiles in the current thread.
@@ -137,10 +148,72 @@ export class LocalDemManager implements DemManager {
     abortController: AbortController,
     timer?: Timer,
   ): Promise<HeightTile> {
-    const zoom = Math.max(
-      0,
-      Math.min(z - (options.overzoom || 0), this.maxzoom),
+    return this.fetchDemAtZoom(
+      this.demZoom(z, options),
+      z,
+      x,
+      y,
+      abortController,
+      timer,
     );
+  }
+
+  private demZoom(z: number, options: IndividualContourTileOptions): number {
+    return Math.max(0, Math.min(z - (options.overzoom || 0), this.maxzoom));
+  }
+
+  /**
+   * The DEM under the contour tile and its 8 neighbors, at the zoom `fetchDem` uses or, when the tileset answers
+   * that the tile under the contour tile does not exist, at the closest lower zoom that has it - a sparse tileset
+   * leaves out its higher zooms where it has no data for them. A neighbor the tileset does not have is left out.
+   */
+  private async fetchNeighbors(
+    zoom: number,
+    z: number,
+    x: number,
+    y: number,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<(HeightTile | undefined)[]> {
+    const max = 1 << z;
+    const neighborPromises: (Promise<HeightTile | undefined> | undefined)[] =
+      [];
+    for (let iy = y - 1; iy <= y + 1; iy++) {
+      for (let ix = x - 1; ix <= x + 1; ix++) {
+        neighborPromises.push(
+          iy < 0 || iy >= max
+            ? undefined
+            : this.fetchDemAtZoom(
+                zoom,
+                z,
+                (ix + max) % max,
+                iy,
+                abortController,
+                timer,
+              ).catch((error) => {
+                if (isNotFound(error)) {
+                  return undefined;
+                }
+                throw error;
+              }),
+        );
+      }
+    }
+    const neighbors = await Promise.all(neighborPromises);
+    if (neighbors[4] || zoom === 0 || isAborted(abortController)) {
+      return neighbors;
+    }
+    return this.fetchNeighbors(zoom - 1, z, x, y, abortController, timer);
+  }
+
+  private async fetchDemAtZoom(
+    zoom: number,
+    z: number,
+    x: number,
+    y: number,
+    abortController: AbortController,
+    timer?: Timer,
+  ): Promise<HeightTile> {
     const subZ = z - zoom;
     const div = 1 << subZ;
     const newX = Math.floor(x / div);
@@ -184,25 +257,14 @@ export class LocalDemManager implements DemManager {
     const cached = this.contourCache.get(
       key,
       async (_, childAbortController) => {
-        const max = 1 << z;
-        const neighborPromises: (Promise<HeightTile> | undefined)[] = [];
-        for (let iy = y - 1; iy <= y + 1; iy++) {
-          for (let ix = x - 1; ix <= x + 1; ix++) {
-            neighborPromises.push(
-              iy < 0 || iy >= max
-                ? undefined
-                : this.fetchDem(
-                    z,
-                    (ix + max) % max,
-                    iy,
-                    options,
-                    childAbortController,
-                    timer,
-                  ),
-            );
-          }
-        }
-        const neighbors = await Promise.all(neighborPromises);
+        const neighbors = await this.fetchNeighbors(
+          this.demZoom(z, options),
+          z,
+          x,
+          y,
+          childAbortController,
+          timer,
+        );
         let virtualTile = HeightTile.combineNeighbors(neighbors);
         if (!virtualTile || isAborted(childAbortController)) {
           return { arrayBuffer: new Uint8Array().buffer };
