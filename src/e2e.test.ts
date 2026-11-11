@@ -401,13 +401,18 @@ function notFound(url: string) {
   });
 }
 
-function sparseDemManager(getTile: jest.Mock, minzoom?: number) {
+function sparseDemManager(
+  getTile: jest.Mock,
+  minzoom?: number,
+  sparse: boolean = true,
+) {
   return new LocalDemManager({
     demUrlPattern: "https://example/{z}/{x}/{y}.png",
     cacheSize: 100,
     encoding: "terrarium",
     maxzoom: 12,
     minzoom,
+    sparse,
     timeoutMs: 10000,
     decodeImage: async () => ({
       width: 4,
@@ -496,4 +501,25 @@ test("fetchContourTile does not fall back below the minzoom of the source", asyn
   expect(urls).toContain("https://example/11/1024/1024.png");
   expect(urls.some((url) => url.startsWith("https://example/10/"))).toBe(false);
   expect(contourTile.arrayBuffer.byteLength).toBe(0);
+});
+
+test("fetchContourTile fails on a missing DEM tile when sparse is disabled", async () => {
+  const getTile = jest.fn().mockImplementation(async (url: string) => {
+    if (url.startsWith("https://example/12/")) {
+      throw notFound(url);
+    }
+    return { data: new Blob([]) };
+  });
+  const demManager = sparseDemManager(getTile, undefined, false);
+  await expect(
+    demManager.fetchContourTile(
+      12,
+      2048,
+      2048,
+      { levels: [10] },
+      new AbortController(),
+    ),
+  ).rejects.toThrow("404");
+  const urls = getTile.mock.calls.map((call) => call[0]);
+  expect(urls.some((url) => url.startsWith("https://example/11/"))).toBe(false);
 });

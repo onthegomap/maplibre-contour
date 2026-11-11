@@ -157,6 +157,7 @@ export type DemManagerRequiredInitializationParameters = {
   encoding: Encoding;
   maxzoom: number;
   minzoom?: number;
+  sparse?: boolean;
   timeoutMs: number;
 };
 
