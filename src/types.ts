@@ -156,6 +156,7 @@ export type DemManagerRequiredInitializationParameters = {
   cacheSize: number;
   encoding: Encoding;
   maxzoom: number;
+  minzoom?: number;
   timeoutMs: number;
 };
 

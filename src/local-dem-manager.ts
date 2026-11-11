@@ -56,6 +56,7 @@ export class LocalDemManager implements DemManager {
   demUrlPattern: string;
   encoding: Encoding;
   maxzoom: number;
+  minzoom: number;
   timeoutMs: number;
   loaded = Promise.resolve();
   decodeImage: DecodeImageFunction;
@@ -69,6 +70,7 @@ export class LocalDemManager implements DemManager {
     this.demUrlPattern = options.demUrlPattern;
     this.encoding = options.encoding;
     this.maxzoom = options.maxzoom;
+    this.minzoom = options.minzoom ?? 0;
     this.decodeImage = options.decodeImage || defaultDecodeImage;
     this.getTile = options.getTile || defaultGetTile;
   }
@@ -164,8 +166,9 @@ export class LocalDemManager implements DemManager {
 
   /**
    * The DEM under the contour tile and its 8 neighbors, at the zoom `fetchDem` uses or, when the tileset answers
-   * that the tile under the contour tile does not exist, at the closest lower zoom that has it - a sparse tileset
-   * leaves out its higher zooms where it has no data for them. A neighbor the tileset does not have is left out.
+   * that the tile under the contour tile does not exist, at the closest lower zoom down to `minzoom` that has it -
+   * a sparse tileset leaves out its higher zooms where it has no data for them. A neighbor the tileset does not
+   * have is left out.
    */
   private async fetchNeighbors(
     zoom: number,
@@ -200,7 +203,7 @@ export class LocalDemManager implements DemManager {
       }
     }
     const neighbors = await Promise.all(neighborPromises);
-    if (neighbors[4] || zoom === 0 || isAborted(abortController)) {
+    if (neighbors[4] || zoom <= this.minzoom || isAborted(abortController)) {
       return neighbors;
     }
     return this.fetchNeighbors(zoom - 1, z, x, y, abortController, timer);

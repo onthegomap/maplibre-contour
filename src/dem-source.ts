@@ -109,6 +109,7 @@ export class DemSource {
     id = "dem",
     encoding = "terrarium",
     maxzoom = 12,
+    minzoom = 0,
     worker = true,
     timeoutMs = 10_000,
     actor,
@@ -122,6 +123,11 @@ export class DemSource {
     encoding?: "terrarium" | "mapbox";
     /** Maximum zoom of tiles contained in the source */
     maxzoom: number;
+    /**
+     * Minimum zoom of tiles contained in the source. A contour tile whose DEM tile the source answers with a 404
+     * is built from the closest lower zoom that has it, down to this zoom.
+     */
+    minzoom?: number;
     timeoutMs?: number;
     /** Handle requests in a shared web worker to reduce UI-thread jank */
     worker?: boolean;
@@ -143,6 +149,7 @@ export class DemSource {
       cacheSize,
       encoding,
       maxzoom,
+      minzoom,
       timeoutMs,
       actor,
     });

@@ -25,6 +25,7 @@ var demSource = new mlcontour.DemSource({
   url: "https://url/of/dem/source/{z}/{x}/{y}.png",
   encoding: "terrarium", // "mapbox" or "terrarium" default="terrarium"
   maxzoom: 13,
+  minzoom: 0, // a DEM tile the source answers with a 404 is replaced by the closest lower zoom down to this one
   worker: true, // offload isoline computation to a web worker to reduce jank
   cacheSize: 100, // number of most-recent tiles to cache
   timeoutMs: 10_000, // timeout on fetch requests
@@ -121,7 +122,8 @@ dispatcher.registerMessageHandler("contour-worker" as any, async () => { // when
   await dispatcher.broadcast("contour-worker" as any, { // this is to configure the worker with the relevant parameters
       demUrlPattern: "https://url/of/dem/source/{z}/{x}/{y}.png", // this can also support other protocols such as pmtiles://
       encoding: "terrarium",
-      maxzoom: 13
+      maxzoom: 13,
+      minzoom: 0 // a DEM tile the source answers with a 404 is replaced by the closest lower zoom down to this one
   });
 
   // once this is configured, you can add a source with the following address for example, and layers as described above.
