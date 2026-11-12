@@ -394,3 +394,132 @@ test("fetchDem floors the DEM zoom at 0 when overzoom exceeds z", async () => {
     [5, 5],
   ]);
 });
+
+function notFound(url: string) {
+  return Object.assign(new Error(`Bad response: 404 for ${url}`), {
+    status: 404,
+  });
+}
+
+function sparseDemManager(
+  getTile: jest.Mock,
+  minzoom?: number,
+  sparse: boolean = true,
+) {
+  return new LocalDemManager({
+    demUrlPattern: "https://example/{z}/{x}/{y}.png",
+    cacheSize: 100,
+    encoding: "terrarium",
+    maxzoom: 12,
+    minzoom,
+    sparse,
+    timeoutMs: 10000,
+    decodeImage: async () => ({
+      width: 4,
+      height: 4,
+      data: expectedElevations,
+    }),
+    getTile,
+  });
+}
+
+test("fetchContourTile falls back to a lower DEM zoom when the tile is missing", async () => {
+  const getTile = jest.fn().mockImplementation(async (url: string) => {
+    if (url.startsWith("https://example/12/")) {
+      throw notFound(url);
+    }
+    return { data: new Blob([]) };
+  });
+  const demManager = sparseDemManager(getTile);
+  const contourTile = await demManager.fetchContourTile(
+    12,
+    2048,
+    2048,
+    { levels: [10] },
+    new AbortController(),
+  );
+  const urls = getTile.mock.calls.map((call) => call[0]);
+  expect(urls).toContain("https://example/12/2048/2048.png");
+  expect(urls).toContain("https://example/11/1024/1024.png");
+  expect(contourTile.arrayBuffer.byteLength).toBeGreaterThan(0);
+});
+
+test("fetchContourTile leaves out a missing neighbor instead of failing", async () => {
+  const getTile = jest.fn().mockImplementation(async (url: string) => {
+    if (url === "https://example/12/2049/2049.png") {
+      throw notFound(url);
+    }
+    return { data: new Blob([]) };
+  });
+  const demManager = sparseDemManager(getTile);
+  const contourTile = await demManager.fetchContourTile(
+    12,
+    2048,
+    2048,
+    { levels: [10] },
+    new AbortController(),
+  );
+  const urls = getTile.mock.calls.map((call) => call[0]);
+  expect(urls.some((url) => url.startsWith("https://example/11/"))).toBe(false);
+  expect(contourTile.arrayBuffer.byteLength).toBeGreaterThan(0);
+});
+
+test("fetchContourTile fails when a DEM tile can not be fetched", async () => {
+  const getTile = jest.fn().mockImplementation(async (url: string) => {
+    throw Object.assign(new Error(`Bad response: 500 for ${url}`), {
+      status: 500,
+    });
+  });
+  const demManager = sparseDemManager(getTile);
+  await expect(
+    demManager.fetchContourTile(
+      12,
+      2048,
+      2048,
+      { levels: [10] },
+      new AbortController(),
+    ),
+  ).rejects.toThrow("500");
+});
+
+test("fetchContourTile does not fall back below the minzoom of the source", async () => {
+  const getTile = jest.fn().mockImplementation(async (url: string) => {
+    if (!url.startsWith("https://example/10/")) {
+      throw notFound(url);
+    }
+    return { data: new Blob([]) };
+  });
+  const demManager = sparseDemManager(getTile, 11);
+  const contourTile = await demManager.fetchContourTile(
+    12,
+    2048,
+    2048,
+    { levels: [10] },
+    new AbortController(),
+  );
+  const urls = getTile.mock.calls.map((call) => call[0]);
+  expect(urls).toContain("https://example/11/1024/1024.png");
+  expect(urls.some((url) => url.startsWith("https://example/10/"))).toBe(false);
+  expect(contourTile.arrayBuffer.byteLength).toBe(0);
+});
+
+test("fetchContourTile fails on a missing DEM tile when sparse is disabled", async () => {
+  const getTile = jest.fn().mockImplementation(async (url: string) => {
+    if (url.startsWith("https://example/12/")) {
+      throw notFound(url);
+    }
+    return { data: new Blob([]) };
+  });
+  const demManager = sparseDemManager(getTile, undefined, false);
+  await expect(
+    demManager.fetchContourTile(
+      12,
+      2048,
+      2048,
+      { levels: [10] },
+      new AbortController(),
+    ),
+  ).rejects.toThrow("404");
+  const urls = getTile.mock.calls.map((call) => call[0]);
+  expect(urls.some((url) => url.startsWith("https://example/11/"))).toBe(false);
+});

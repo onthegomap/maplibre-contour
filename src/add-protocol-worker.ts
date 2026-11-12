@@ -14,6 +14,8 @@ import type { DemManagerRequiredInitializationParameters } from "./types";
       timeoutMs: params.timeoutMs ?? 10_000,
       encoding: params.encoding,
       maxzoom: params.maxzoom,
+      minzoom: params.minzoom,
+      sparse: params.sparse,
       getTile: async (url: string, abortController: AbortController) => {
         const request = {
           url,

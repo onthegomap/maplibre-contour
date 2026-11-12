@@ -25,6 +25,8 @@ var demSource = new mlcontour.DemSource({
   url: "https://url/of/dem/source/{z}/{x}/{y}.png",
   encoding: "terrarium", // "mapbox" or "terrarium" default="terrarium"
   maxzoom: 13,
+  minzoom: 0, // lowest zoom that sparse: true falls back to
+  sparse: false, // set to true for a sparse tileset: a DEM tile the source answers with a 404 is replaced by the closest lower zoom that has it, down to minzoom
   worker: true, // offload isoline computation to a web worker to reduce jank
   cacheSize: 100, // number of most-recent tiles to cache
   timeoutMs: 10_000, // timeout on fetch requests
@@ -113,21 +115,29 @@ It's similar to how the RTL plugin works.
 Import the script from a CDN:
 
 ```ts
-maplibregl.importScriptInWorkers("https://unpkg.com/maplibre-contour@0.1.0/dist/add-protocol-worker.js");
+maplibregl.importScriptInWorkers(
+  "https://unpkg.com/maplibre-contour@0.1.0/dist/add-protocol-worker.js",
+);
 
 const dispatcher = maplibregl.getGlobalDispatcher();
-dispatcher.registerMessageHandler("contour-worker" as any, async () => { // when the script finishes loading in the workers it will send out this message.
+dispatcher.registerMessageHandler("contour-worker" as any, async () => {
+  // when the script finishes loading in the workers it will send out this message.
 
-  await dispatcher.broadcast("contour-worker" as any, { // this is to configure the worker with the relevant parameters
-      demUrlPattern: "https://url/of/dem/source/{z}/{x}/{y}.png", // this can also support other protocols such as pmtiles://
-      encoding: "terrarium",
-      maxzoom: 13
+  await dispatcher.broadcast("contour-worker" as any, {
+    // this is to configure the worker with the relevant parameters
+    demUrlPattern: "https://url/of/dem/source/{z}/{x}/{y}.png", // this can also support other protocols such as pmtiles://
+    encoding: "terrarium",
+    maxzoom: 13,
+    minzoom: 0, // lowest zoom that sparse: true falls back to
+    sparse: false, // set to true for a sparse tileset: a DEM tile the source answers with a 404 is replaced by the closest lower zoom that has it, down to minzoom
   });
 
   // once this is configured, you can add a source with the following address for example, and layers as described above.
   map.addSource("contour-source", {
     type: "vector",
-    tiles: ["dem-contour://{z}/{x}/{y}?contourLayer=contours&elevationKey=ele&levelKey=level&multiplier=3.28084&overzoom=1&thresholds=11*200*1000~12*10*100~13*10*100~14*10*100~15*10*100"],
+    tiles: [
+      "dem-contour://{z}/{x}/{y}?contourLayer=contours&elevationKey=ele&levelKey=level&multiplier=3.28084&overzoom=1&thresholds=11*200*1000~12*10*100~13*10*100~14*10*100~15*10*100",
+    ],
   });
 });
 ```
