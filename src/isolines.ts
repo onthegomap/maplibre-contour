@@ -18,42 +18,74 @@ THIS SOFTWARE.
 
 import type { HeightTile } from "./height-tile";
 
+function pushAll(target: number[], source: number[]) {
+  for (let i = 0; i < source.length; i++) {
+    target.push(source[i]);
+  }
+}
+
+function pushPairsReversed(target: number[], source: number[]) {
+  for (let i = source.length - 2; i >= 0; i -= 2) {
+    target.push(source[i], source[i + 1]);
+  }
+}
+
 class Fragment {
   start: number;
   end: number;
-  points: number[];
+  prepended: number[];
+  appended: number[];
 
   constructor(start: number, end: number) {
     this.start = start;
     this.end = end;
-    this.points = [];
+    this.prepended = [];
+    this.appended = [];
     this.append = this.append.bind(this);
     this.prepend = this.prepend.bind(this);
   }
 
   append(x: number, y: number) {
-    this.points.push(Math.round(x), Math.round(y));
+    this.appended.push(Math.round(x), Math.round(y));
   }
 
   prepend(x: number, y: number) {
-    this.points.splice(0, 0, Math.round(x), Math.round(y));
+    this.prepended.push(Math.round(x), Math.round(y));
   }
 
   lineString() {
     return this.toArray();
   }
 
+  size() {
+    return this.prepended.length + this.appended.length;
+  }
+
   isEmpty() {
-    return this.points.length < 2;
+    return this.size() < 2;
   }
 
   appendFragment(other: Fragment) {
-    this.points.push(...other.points);
+    if (this.size() >= other.size()) {
+      pushPairsReversed(this.appended, other.prepended);
+      pushAll(this.appended, other.appended);
+    } else {
+      pushPairsReversed(other.prepended, this.appended);
+      pushAll(other.prepended, this.prepended);
+      this.prepended = other.prepended;
+      this.appended = other.appended;
+    }
     this.end = other.end;
   }
 
   toArray() {
-    return this.points;
+    if (this.prepended.length === 0) {
+      return this.appended;
+    }
+    const result: number[] = [];
+    pushPairsReversed(result, this.prepended);
+    pushAll(result, this.appended);
+    return result;
   }
 }
 
